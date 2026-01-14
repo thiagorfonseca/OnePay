@@ -23,7 +23,8 @@ interface ContentLesson {
   module_id: string | null;
   title: string | null;
   description: string | null;
-  panda_url: string | null;
+  panda_video_id: string | null;
+  panda_video_url: string | null;
   order_index: number | null;
   published: boolean | null;
 }
@@ -61,7 +62,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
   const [newLessonByModule, setNewLessonByModule] = useState<Record<string, {
     title: string;
     description: string;
-    panda_url: string;
+    panda_video_url: string;
     order_index: number;
     published: boolean;
   }>>({});
@@ -199,14 +200,14 @@ const AdminContent: React.FC<Props> = ({ type }) => {
       module_id: moduleId,
       title: draft.title.trim(),
       description: draft.description || null,
-      panda_url: draft.panda_url || null,
+      panda_video_url: draft.panda_video_url || null,
       order_index: draft.order_index,
       published: draft.published,
     });
     if (!error && selectedItem) {
       setNewLessonByModule((prev) => ({
         ...prev,
-        [moduleId]: { title: '', description: '', panda_url: '', order_index: draft.order_index + 1, published: false },
+        [moduleId]: { title: '', description: '', panda_video_url: '', order_index: draft.order_index + 1, published: false },
       }));
       loadModules(selectedItem.id);
     }
@@ -218,7 +219,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
       .update({
         title: lesson.title,
         description: lesson.description,
-        panda_url: lesson.panda_url,
+        panda_video_url: lesson.panda_video_url,
         order_index: lesson.order_index,
         published: lesson.published,
       })
@@ -411,13 +412,13 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                             <input
-                              value={lesson.panda_url || ''}
+                              value={lesson.panda_video_url || ''}
                               onChange={(e) => {
                                 const value = e.target.value;
                                 setModules((prev) =>
                                   prev.map((m) =>
                                     m.id === module.id
-                                      ? { ...m, lessons: m.lessons.map((l) => (l.id === lesson.id ? { ...l, panda_url: value } : l)) }
+                                      ? { ...m, lessons: m.lessons.map((l) => (l.id === lesson.id ? { ...l, panda_video_url: value } : l)) }
                                       : m
                                   )
                                 );
@@ -499,7 +500,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                               [module.id]: {
                                 title: e.target.value,
                                 description: prev[module.id]?.description || '',
-                                panda_url: prev[module.id]?.panda_url || '',
+                                panda_video_url: prev[module.id]?.panda_video_url || '',
                                 order_index: prev[module.id]?.order_index || 1,
                                 published: prev[module.id]?.published || false,
                               },
@@ -516,7 +517,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                               [module.id]: {
                                 title: prev[module.id]?.title || '',
                                 description: e.target.value,
-                                panda_url: prev[module.id]?.panda_url || '',
+                                panda_video_url: prev[module.id]?.panda_video_url || '',
                                 order_index: prev[module.id]?.order_index || 1,
                                 published: prev[module.id]?.published || false,
                               },
@@ -527,14 +528,14 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                         <input
-                          value={newLessonByModule[module.id]?.panda_url || ''}
+                          value={newLessonByModule[module.id]?.panda_video_url || ''}
                           onChange={(e) =>
                             setNewLessonByModule((prev) => ({
                               ...prev,
                               [module.id]: {
                                 title: prev[module.id]?.title || '',
                                 description: prev[module.id]?.description || '',
-                                panda_url: e.target.value,
+                                panda_video_url: e.target.value,
                                 order_index: prev[module.id]?.order_index || 1,
                                 published: prev[module.id]?.published || false,
                               },
@@ -555,7 +556,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                                   [module.id]: {
                                     title: prev[module.id]?.title || '',
                                     description: prev[module.id]?.description || '',
-                                    panda_url: prev[module.id]?.panda_url || '',
+                                    panda_video_url: prev[module.id]?.panda_video_url || '',
                                     order_index: Number(e.target.value),
                                     published: prev[module.id]?.published || false,
                                   },
@@ -574,7 +575,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                                   [module.id]: {
                                     title: prev[module.id]?.title || '',
                                     description: prev[module.id]?.description || '',
-                                    panda_url: prev[module.id]?.panda_url || '',
+                                    panda_video_url: prev[module.id]?.panda_video_url || '',
                                     order_index: prev[module.id]?.order_index || 1,
                                     published: e.target.checked,
                                   },

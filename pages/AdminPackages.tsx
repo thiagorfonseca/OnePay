@@ -150,7 +150,7 @@ const AdminPackages: React.FC = () => {
 
   useEffect(() => {
     if (!selectedClinicId) return;
-    loadClinicPackages(selectedClinicId).catch(() => setClinicPackageIds([]));
+    loadClinicPackages(selectedClinicId).catch(() => setClinicPackageId(''));
   }, [selectedClinicId]);
 
   const handleOpenNew = () => {
