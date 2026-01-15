@@ -1,0 +1,1 @@
+import{j as t}from"./index-V1BrPv90.js";import{C as n}from"./ContentsList-CLplfzSC.js";const e=()=>t.jsx(n,{type:"training",title:"Treinamentos",subtitle:"Treinamentos rápidos para o time da clínica.",basePath:"/contents/trainings"});export{e as default};
