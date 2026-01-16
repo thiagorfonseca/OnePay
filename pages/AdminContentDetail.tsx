@@ -901,6 +901,7 @@ const AdminContentDetail: React.FC = () => {
                             [module.id]: {
                               title: e.target.value,
                               order_index: prev[module.id]?.order_index ?? 0,
+                              thumbnail_url: prev[module.id]?.thumbnail_url || '',
                             },
                           }))
                         }
@@ -916,6 +917,7 @@ const AdminContentDetail: React.FC = () => {
                             [module.id]: {
                               title: prev[module.id]?.title || '',
                               order_index: Number(e.target.value),
+                              thumbnail_url: prev[module.id]?.thumbnail_url || '',
                             },
                           }))
                         }
