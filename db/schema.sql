@@ -175,6 +175,22 @@ alter table public.procedures
   add column if not exists custo_insumo numeric(14,2),
   add column if not exists tempo_minutos int;
 
+-- Gastos para precificação
+create table if not exists public.pricing_expenses (
+  id uuid primary key default uuid_generate_v4(),
+  clinic_id uuid references public.clinics(id) on delete cascade,
+  categoria text not null,
+  nome text not null,
+  valor_base numeric(14,2) not null,
+  valor_calculado numeric(14,2) not null,
+  created_at timestamptz default now()
+);
+alter table public.pricing_expenses
+  add column if not exists categoria text,
+  add column if not exists nome text,
+  add column if not exists valor_base numeric(14,2),
+  add column if not exists valor_calculado numeric(14,2);
+
 -- Profissionais (venda/execução)
 create table if not exists public.professionals (
   id uuid primary key default uuid_generate_v4(),
@@ -261,6 +277,7 @@ alter table public.customers enable row level security;
 alter table public.bank_transactions enable row level security;
 alter table public.clinic_users enable row level security;
 alter table public.procedures enable row level security;
+alter table public.pricing_expenses enable row level security;
 alter table public.revenue_procedures enable row level security;
 alter table public.professionals enable row level security;
 alter table public.suppliers enable row level security;
@@ -279,6 +296,7 @@ drop policy if exists "Authenticated access" on public.customers;
 drop policy if exists "Authenticated access" on public.bank_transactions;
 drop policy if exists "Authenticated access" on public.clinic_users;
 drop policy if exists "Authenticated access" on public.procedures;
+drop policy if exists "Authenticated access" on public.pricing_expenses;
 drop policy if exists "Authenticated access" on public.revenue_procedures;
 drop policy if exists "Authenticated access" on public.professionals;
 drop policy if exists "Authenticated access" on public.suppliers;
@@ -317,6 +335,8 @@ create policy "Authenticated access" on public.bank_transactions for all
 create policy "Authenticated access" on public.clinic_users for all
   to authenticated using (true) with check (true);
 create policy "Authenticated access" on public.procedures for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.pricing_expenses for all
   to authenticated using (true) with check (true);
 create policy "Authenticated access" on public.revenue_procedures for all
   to authenticated using (true) with check (true);

@@ -758,6 +758,44 @@ export type Database = {
           },
         ]
       }
+      pricing_expenses: {
+        Row: {
+          categoria: string
+          clinic_id: string | null
+          created_at: string | null
+          id: string
+          nome: string
+          valor_base: number
+          valor_calculado: number
+        }
+        Insert: {
+          categoria: string
+          clinic_id?: string | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          valor_base: number
+          valor_calculado: number
+        }
+        Update: {
+          categoria?: string
+          clinic_id?: string | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          valor_base?: number
+          valor_calculado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_expenses_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           clinic_id: string | null

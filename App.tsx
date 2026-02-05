@@ -34,6 +34,10 @@ const CommercialRecurrence = lazy(() => import('./pages/CommercialRecurrence'));
 const CommercialDashboard = lazy(() => import('./pages/CommercialDashboard'));
 const CommercialGeo = lazy(() => import('./pages/CommercialGeo'));
 const ClinicAssistant = lazy(() => import('./pages/ClinicAssistant'));
+const PricingCalculator = lazy(() => import('./pages/PricingCalculator'));
+const PricingProcedures = lazy(() => import('./pages/PricingProcedures'));
+const PricingExpenses = lazy(() => import('./pages/PricingExpenses'));
+const PricingFocusMatrix = lazy(() => import('./pages/PricingFocusMatrix'));
 
 function App() {
   return (
@@ -135,6 +139,26 @@ function App() {
             <Route path="/assistant" element={
               <ProtectedRoute page="/assistant">
                 <ClinicAssistant />
+              </ProtectedRoute>
+            } />
+            <Route path="/pricing/calculator" element={
+              <ProtectedRoute page="/pricing/calculator">
+                <PricingCalculator />
+              </ProtectedRoute>
+            } />
+            <Route path="/pricing/procedures" element={
+              <ProtectedRoute page="/pricing/procedures">
+                <PricingProcedures />
+              </ProtectedRoute>
+            } />
+            <Route path="/pricing/expenses" element={
+              <ProtectedRoute page="/pricing/expenses">
+                <PricingExpenses />
+              </ProtectedRoute>
+            } />
+            <Route path="/pricing/focus-matrix" element={
+              <ProtectedRoute page="/pricing/focus-matrix">
+                <PricingFocusMatrix />
               </ProtectedRoute>
             } />
 

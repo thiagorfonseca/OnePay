@@ -33,6 +33,10 @@ const PAGE_OPTIONS = [
   { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
   { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },
   { value: '/commercial/geo', label: 'Comercial • Geolocalização' },
+  { value: '/pricing/calculator', label: 'Precificação • Calculadora' },
+  { value: '/pricing/procedures', label: 'Precificação • Procedimentos' },
+  { value: '/pricing/expenses', label: 'Precificação • Gastos' },
+  { value: '/pricing/focus-matrix', label: 'Precificação • Matriz de Foco' },
 ];
 
 const emptyForm: PackageForm = {

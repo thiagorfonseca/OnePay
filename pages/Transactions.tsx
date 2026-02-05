@@ -679,6 +679,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
         ? manualParcelas.slice(0, parcelasInformadas)
         : [];
 
+      if (
+        isIncome &&
+        (formData.payment_method === 'Cartão de Crédito' || formData.payment_method === 'Cartão de Débito') &&
+        !formData.nsu.trim()
+      ) {
+        alert('Informe o NSU para pagamentos em cartão de crédito ou débito.');
+        setSubmitting(false);
+        return;
+      }
+
       if ((isBoleto || isCheque) && parcelasInformadas > 1) {
         const invalid = parcelasManual.length !== parcelasInformadas || parcelasManual.some(p => !p.vencimento);
         if (invalid) {
@@ -2260,6 +2270,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                             name="nsu"
                             value={formData.nsu}
                             onChange={handleInputChange}
+                            required
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
                             placeholder="Código autorizador"
                           />
@@ -2276,6 +2287,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                             name="nsu"
                             value={formData.nsu}
                             onChange={handleInputChange}
+                            required
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
                             placeholder="Código autorizador"
                           />
