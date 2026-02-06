@@ -93,6 +93,12 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     { value: '/pricing/procedures', label: 'Precificação • Procedimentos' },
     { value: '/pricing/expenses', label: 'Precificação • Gastos' },
     { value: '/pricing/focus-matrix', label: 'Precificação • Matriz de Foco' },
+    { value: '/hr/departments', label: 'Recursos Humanos • Departamentos' },
+    { value: '/hr/collaborators', label: 'Recursos Humanos • Colaboradores' },
+    { value: '/hr/feedback', label: 'Recursos Humanos • Feedback' },
+    { value: '/hr/meetings', label: 'Recursos Humanos • Reuniões' },
+    { value: '/hr/archetypes', label: 'Recursos Humanos • Arquétipos' },
+    { value: '/hr/values', label: 'Recursos Humanos • Teoria de valores' },
   ];
   const PAGE_LABEL_MAP = useMemo(() => Object.fromEntries(PAGE_OPTIONS.map(p => [p.value, p.label])), []);
   const [tab, setTab] = useState<'overview' | 'clinics' | 'users'>(initialTab);

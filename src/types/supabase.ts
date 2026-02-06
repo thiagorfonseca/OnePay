@@ -796,6 +796,346 @@ export type Database = {
           },
         ]
       }
+      hr_meeting_participants: {
+        Row: {
+          clinic_user_id: string
+          created_at: string | null
+          id: string
+          meeting_id: string
+        }
+        Insert: {
+          clinic_user_id: string
+          created_at?: string | null
+          id?: string
+          meeting_id: string
+        }
+        Update: {
+          clinic_user_id?: string
+          created_at?: string | null
+          id?: string
+          meeting_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_meeting_participants_clinic_user_id_fkey"
+            columns: ["clinic_user_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_meeting_participants_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "hr_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_meetings: {
+        Row: {
+          agenda: string | null
+          clinic_id: string
+          conductor_id: string | null
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          id: string
+          meeting_date: string
+          meeting_link: string | null
+          meeting_time: string | null
+          meeting_type: string | null
+          next_steps: string | null
+          status: string | null
+          title: string
+        }
+        Insert: {
+          agenda?: string | null
+          clinic_id: string
+          conductor_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          meeting_date: string
+          meeting_link?: string | null
+          meeting_time?: string | null
+          meeting_type?: string | null
+          next_steps?: string | null
+          status?: string | null
+          title: string
+        }
+        Update: {
+          agenda?: string | null
+          clinic_id?: string
+          conductor_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          meeting_date?: string
+          meeting_link?: string | null
+          meeting_time?: string | null
+          meeting_type?: string | null
+          next_steps?: string | null
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_meetings_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_meetings_conductor_id_fkey"
+            columns: ["conductor_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_department_affiliations: {
+        Row: {
+          affiliated_department_id: string
+          created_at: string | null
+          department_id: string
+          id: string
+        }
+        Insert: {
+          affiliated_department_id: string
+          created_at?: string | null
+          department_id: string
+          id?: string
+        }
+        Update: {
+          affiliated_department_id?: string
+          created_at?: string | null
+          department_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_department_affiliations_affiliated_department_id_fkey"
+            columns: ["affiliated_department_id"]
+            isOneToOne: false
+            referencedRelation: "hr_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_department_affiliations_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "hr_departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_collaborators: {
+        Row: {
+          admission_date: string | null
+          archetype: string | null
+          birth_date: string | null
+          clinic_id: string
+          clinic_user_id: string
+          contract_type: string | null
+          created_at: string | null
+          description: string | null
+          function_title: string | null
+          id: string
+          job_title: string | null
+          salary: number | null
+        }
+        Insert: {
+          admission_date?: string | null
+          archetype?: string | null
+          birth_date?: string | null
+          clinic_id: string
+          clinic_user_id: string
+          contract_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          function_title?: string | null
+          id?: string
+          job_title?: string | null
+          salary?: number | null
+        }
+        Update: {
+          admission_date?: string | null
+          archetype?: string | null
+          birth_date?: string | null
+          clinic_id?: string
+          clinic_user_id?: string
+          contract_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          function_title?: string | null
+          id?: string
+          job_title?: string | null
+          salary?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_collaborators_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_collaborators_clinic_user_id_fkey"
+            columns: ["clinic_user_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_departments: {
+        Row: {
+          clinic_id: string
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_departments_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_feedback_participants: {
+        Row: {
+          clinic_user_id: string
+          created_at: string | null
+          feedback_id: string
+          id: string
+        }
+        Insert: {
+          clinic_user_id: string
+          created_at?: string | null
+          feedback_id: string
+          id?: string
+        }
+        Update: {
+          clinic_user_id?: string
+          created_at?: string | null
+          feedback_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_feedback_participants_clinic_user_id_fkey"
+            columns: ["clinic_user_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_feedback_participants_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "hr_feedbacks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_feedbacks: {
+        Row: {
+          clinic_id: string
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          feedback_date: string | null
+          feedback_type: string | null
+          id: string
+          leader_id: string | null
+          result: string | null
+          score_management: number | null
+          score_personal: number | null
+          subject_user_id: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          feedback_date?: string | null
+          feedback_type?: string | null
+          id?: string
+          leader_id?: string | null
+          result?: string | null
+          score_management?: number | null
+          score_personal?: number | null
+          subject_user_id: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          feedback_date?: string | null
+          feedback_type?: string | null
+          id?: string
+          leader_id?: string | null
+          result?: string | null
+          score_management?: number | null
+          score_personal?: number | null
+          subject_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_feedbacks_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_feedbacks_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "hr_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_feedbacks_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_feedbacks_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           clinic_id: string | null

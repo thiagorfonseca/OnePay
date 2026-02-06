@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target } from 'lucide-react';
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ClinicSwitcher from './admin/ClinicSwitcher';
@@ -63,6 +63,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { name: 'Procedimentos', href: '/pricing/procedures', icon: FileText },
         { name: 'Gastos', href: '/pricing/expenses', icon: Wallet },
         { name: 'Matriz de Foco', href: '/pricing/focus-matrix', icon: Target },
+      ],
+    },
+    {
+      name: 'Recursos Humanos',
+      href: '/hr/departments',
+      icon: Users,
+      children: [
+        { name: 'Departamentos', href: '/hr/departments', icon: Tag },
+        { name: 'Colaboradores', href: '/hr/collaborators', icon: Users },
+        { name: 'Feedback', href: '/hr/feedback', icon: MessageCircle },
+        { name: 'Reuniões', href: '/hr/meetings', icon: Calendar },
+        { name: 'Arquétipos', href: '/hr/archetypes', icon: Target },
+        { name: 'Teoria de valores', href: '/hr/values', icon: BookOpen },
       ],
     },
     {
@@ -182,21 +195,29 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
       `}>
         <div className="h-full flex flex-col">
-          <div className="h-16 flex items-center px-4 border-b border-gray-100">
-            <div className={`flex items-center gap-2 text-brand-600 font-bold text-xl ${isCollapsed ? 'justify-center w-full' : ''}`}>
-              <img src="/onefinc_azul.png" alt="OneFinc" className="w-8 h-8 object-contain" />
+          <div className="sticky top-0 z-10 relative h-20 flex items-center px-6 border-b border-gray-100 bg-white">
+            <Link
+              to="/"
+              className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-brand-600 font-bold text-xl"
+              aria-label="Ir para a página inicial"
+            >
+              <img
+                src="/onefinc_azul.png"
+                alt="OneFinc"
+                className={`object-contain ${isCollapsed ? 'w-7 h-7' : 'w-8 h-8'}`}
+              />
               {!isCollapsed && 'OneFinc'}
-            </div>
+            </Link>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden lg:inline-flex ml-auto text-gray-400 hover:text-gray-600"
+              className="hidden lg:inline-flex absolute right-4 text-gray-400 hover:text-gray-600"
               aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
             >
               {isCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-1">
+          <nav className="flex-1 px-4 pt-8 pb-6 space-y-1 overflow-y-auto">
             {filteredNavigation.map((item) => {
               const isParentActive = openParentForActive[item.name];
               const isExpanded = hasManualExpand ? !!expanded[item.name] : (expanded[item.name] ?? isParentActive);

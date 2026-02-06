@@ -38,6 +38,12 @@ const PricingCalculator = lazy(() => import('./pages/PricingCalculator'));
 const PricingProcedures = lazy(() => import('./pages/PricingProcedures'));
 const PricingExpenses = lazy(() => import('./pages/PricingExpenses'));
 const PricingFocusMatrix = lazy(() => import('./pages/PricingFocusMatrix'));
+const HRDepartments = lazy(() => import('./pages/HRDepartments'));
+const HRCollaborators = lazy(() => import('./pages/HRCollaborators'));
+const HRFeedback = lazy(() => import('./pages/HRFeedback'));
+const HRMeetings = lazy(() => import('./pages/HRMeetings'));
+const HRArchetypes = lazy(() => import('./pages/HRArchetypes'));
+const HRValues = lazy(() => import('./pages/HRValues'));
 
 function App() {
   return (
@@ -159,6 +165,36 @@ function App() {
             <Route path="/pricing/focus-matrix" element={
               <ProtectedRoute page="/pricing/focus-matrix">
                 <PricingFocusMatrix />
+              </ProtectedRoute>
+            } />
+            <Route path="/hr/departments" element={
+              <ProtectedRoute page="/hr/departments">
+                <HRDepartments />
+              </ProtectedRoute>
+            } />
+            <Route path="/hr/collaborators" element={
+              <ProtectedRoute page="/hr/collaborators">
+                <HRCollaborators />
+              </ProtectedRoute>
+            } />
+            <Route path="/hr/feedback" element={
+              <ProtectedRoute page="/hr/feedback">
+                <HRFeedback />
+              </ProtectedRoute>
+            } />
+            <Route path="/hr/meetings" element={
+              <ProtectedRoute page="/hr/meetings">
+                <HRMeetings />
+              </ProtectedRoute>
+            } />
+            <Route path="/hr/archetypes" element={
+              <ProtectedRoute page="/hr/archetypes">
+                <HRArchetypes />
+              </ProtectedRoute>
+            } />
+            <Route path="/hr/values" element={
+              <ProtectedRoute page="/hr/values">
+                <HRValues />
               </ProtectedRoute>
             } />
 

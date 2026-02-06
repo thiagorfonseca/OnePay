@@ -191,6 +191,112 @@ alter table public.pricing_expenses
   add column if not exists valor_base numeric(14,2),
   add column if not exists valor_calculado numeric(14,2);
 
+-- Reuniões internas (RH)
+create table if not exists public.hr_meetings (
+  id uuid primary key default uuid_generate_v4(),
+  clinic_id uuid references public.clinics(id) on delete cascade,
+  title text not null,
+  department text,
+  meeting_type text,
+  meeting_date date not null,
+  meeting_time time,
+  status text,
+  meeting_link text,
+  agenda text,
+  next_steps text,
+  conductor_id uuid references public.clinic_users(id) on delete set null,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.hr_meeting_participants (
+  id uuid primary key default uuid_generate_v4(),
+  meeting_id uuid references public.hr_meetings(id) on delete cascade,
+  clinic_user_id uuid references public.clinic_users(id) on delete cascade,
+  created_at timestamptz default now()
+);
+alter table public.hr_meeting_participants
+  add column if not exists meeting_id uuid references public.hr_meetings(id) on delete cascade,
+  add column if not exists clinic_user_id uuid references public.clinic_users(id) on delete cascade;
+
+-- Departamentos (RH)
+create table if not exists public.hr_departments (
+  id uuid primary key default uuid_generate_v4(),
+  clinic_id uuid references public.clinics(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now()
+);
+
+-- Normalizar duplicidade por clínica (case/acento-insensitive)
+alter table public.hr_departments
+  add column if not exists name_normalized text;
+alter table public.hr_departments
+  add constraint hr_departments_clinic_id_name_norm_key unique (clinic_id, name_normalized);
+
+create table if not exists public.hr_department_affiliations (
+  id uuid primary key default uuid_generate_v4(),
+  department_id uuid references public.hr_departments(id) on delete cascade,
+  affiliated_department_id uuid references public.hr_departments(id) on delete cascade,
+  created_at timestamptz default now()
+);
+alter table public.hr_department_affiliations
+  add column if not exists department_id uuid references public.hr_departments(id) on delete cascade,
+  add column if not exists affiliated_department_id uuid references public.hr_departments(id) on delete cascade;
+
+-- Feedbacks (RH)
+create table if not exists public.hr_feedbacks (
+  id uuid primary key default uuid_generate_v4(),
+  clinic_id uuid references public.clinics(id) on delete cascade,
+  subject_user_id uuid references public.clinic_users(id) on delete cascade,
+  department_id uuid references public.hr_departments(id) on delete set null,
+  leader_id uuid references public.clinic_users(id) on delete set null,
+  feedback_type text,
+  feedback_date date,
+  score_personal integer,
+  score_management integer,
+  result text,
+  description text,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.hr_feedback_participants (
+  id uuid primary key default uuid_generate_v4(),
+  feedback_id uuid references public.hr_feedbacks(id) on delete cascade,
+  clinic_user_id uuid references public.clinic_users(id) on delete cascade,
+  created_at timestamptz default now()
+);
+alter table public.hr_feedback_participants
+  add column if not exists feedback_id uuid references public.hr_feedbacks(id) on delete cascade,
+  add column if not exists clinic_user_id uuid references public.clinic_users(id) on delete cascade;
+
+-- Colaboradores (RH)
+create table if not exists public.hr_collaborators (
+  id uuid primary key default uuid_generate_v4(),
+  clinic_id uuid references public.clinics(id) on delete cascade,
+  clinic_user_id uuid references public.clinic_users(id) on delete cascade,
+  birth_date date,
+  admission_date date,
+  job_title text,
+  function_title text,
+  contract_type text,
+  salary numeric(14,2),
+  description text,
+  archetype text,
+  created_at timestamptz default now()
+);
+alter table public.hr_collaborators
+  add column if not exists clinic_id uuid references public.clinics(id) on delete cascade,
+  add column if not exists clinic_user_id uuid references public.clinic_users(id) on delete cascade,
+  add column if not exists birth_date date,
+  add column if not exists admission_date date,
+  add column if not exists job_title text,
+  add column if not exists function_title text,
+  add column if not exists contract_type text,
+  add column if not exists salary numeric(14,2),
+  add column if not exists description text,
+  add column if not exists archetype text;
+
 -- Profissionais (venda/execução)
 create table if not exists public.professionals (
   id uuid primary key default uuid_generate_v4(),
@@ -278,6 +384,13 @@ alter table public.bank_transactions enable row level security;
 alter table public.clinic_users enable row level security;
 alter table public.procedures enable row level security;
 alter table public.pricing_expenses enable row level security;
+alter table public.hr_meetings enable row level security;
+alter table public.hr_meeting_participants enable row level security;
+alter table public.hr_departments enable row level security;
+alter table public.hr_department_affiliations enable row level security;
+alter table public.hr_feedbacks enable row level security;
+alter table public.hr_feedback_participants enable row level security;
+alter table public.hr_collaborators enable row level security;
 alter table public.revenue_procedures enable row level security;
 alter table public.professionals enable row level security;
 alter table public.suppliers enable row level security;
@@ -297,6 +410,13 @@ drop policy if exists "Authenticated access" on public.bank_transactions;
 drop policy if exists "Authenticated access" on public.clinic_users;
 drop policy if exists "Authenticated access" on public.procedures;
 drop policy if exists "Authenticated access" on public.pricing_expenses;
+drop policy if exists "Authenticated access" on public.hr_meetings;
+drop policy if exists "Authenticated access" on public.hr_meeting_participants;
+drop policy if exists "Authenticated access" on public.hr_departments;
+drop policy if exists "Authenticated access" on public.hr_department_affiliations;
+drop policy if exists "Authenticated access" on public.hr_feedbacks;
+drop policy if exists "Authenticated access" on public.hr_feedback_participants;
+drop policy if exists "Authenticated access" on public.hr_collaborators;
 drop policy if exists "Authenticated access" on public.revenue_procedures;
 drop policy if exists "Authenticated access" on public.professionals;
 drop policy if exists "Authenticated access" on public.suppliers;
@@ -337,6 +457,20 @@ create policy "Authenticated access" on public.clinic_users for all
 create policy "Authenticated access" on public.procedures for all
   to authenticated using (true) with check (true);
 create policy "Authenticated access" on public.pricing_expenses for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.hr_meetings for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.hr_meeting_participants for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.hr_departments for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.hr_department_affiliations for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.hr_feedbacks for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.hr_feedback_participants for all
+  to authenticated using (true) with check (true);
+create policy "Authenticated access" on public.hr_collaborators for all
   to authenticated using (true) with check (true);
 create policy "Authenticated access" on public.revenue_procedures for all
   to authenticated using (true) with check (true);
