@@ -6,7 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { formatCurrency, formatMonthYear } from '../lib/utils';
 
 const CommercialDashboard: React.FC = () => {
-  const { clinicId, isAdmin, selectedClinicId } = useAuth();
+  const { effectiveClinicId: clinicId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [revenues, setRevenues] = useState<any[]>([]);
   const [ranking, setRanking] = useState<any[]>([]);
@@ -18,10 +18,16 @@ const CommercialDashboard: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!clinicId && !isAdmin) return;
+      if (!clinicId) {
+        setRevenues([]);
+        setRanking([]);
+        setRecorrencia({ percentual: 0 });
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       const data = await fetchCommercialData({
-        clinicId: isAdmin ? selectedClinicId || undefined : clinicId,
+        clinicId,
         from: from || undefined,
         to: to || undefined,
       });
@@ -32,7 +38,7 @@ const CommercialDashboard: React.FC = () => {
       setLoading(false);
     };
     load();
-  }, [clinicId, isAdmin, selectedClinicId, from, to]);
+  }, [clinicId, from, to]);
 
   const applyDateFilter = () => {
     setFrom(draftFrom);

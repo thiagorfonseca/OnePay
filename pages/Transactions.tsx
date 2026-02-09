@@ -93,8 +93,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
   const table = isIncome ? 'revenues' : 'expenses';
 
   // --- States ---
-  const { clinicId, isAdmin, selectedClinicId } = useAuth();
-  const effectiveClinic = (isAdmin ? selectedClinicId : clinicId) || clinicId || null;
+  const { effectiveClinicId: clinicId } = useAuth();
+  const effectiveClinic = clinicId || null;
 
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -197,6 +197,17 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
     setTransactions([]);
     setLoading(true);
     try {
+      if (!effectiveClinic) {
+        setAccounts([]);
+        setCategories([]);
+        setCardFees([]);
+        setCustomers([]);
+        setProcedures([]);
+        setProfessionals([]);
+        setSuppliers([]);
+        setAllRevenues([]);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
@@ -271,7 +282,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
 
   useEffect(() => {
     fetchData();
-  }, [type, dateStart, dateEnd, expenseDateField]); // Refetch when filters change
+  }, [type, dateStart, dateEnd, expenseDateField, effectiveClinic]); // Refetch when filters change
 
   // --- Handlers ---
 

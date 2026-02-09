@@ -18,7 +18,7 @@ function rangeFromPeriod(period: Period) {
 }
 
 const CommercialRecurrence: React.FC = () => {
-  const { clinicId, isAdmin, selectedClinicId } = useAuth();
+  const { effectiveClinicId: clinicId } = useAuth();
   const [period, setPeriod] = useState<Period>('semestral');
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<any[]>([]);
@@ -39,16 +39,21 @@ const CommercialRecurrence: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!clinicId && !isAdmin) return;
+      if (!clinicId) {
+        setRows([]);
+        setStats({ total: 0, recorrentes: 0, naoRecorrentes: 0, percentual: 0 });
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      const data = await fetchCommercialData({ clinicId: isAdmin ? selectedClinicId || undefined : clinicId, from, to });
+      const data = await fetchCommercialData({ clinicId, from, to });
       const rec = buildRecurrence(data, from, to);
       setRows(rec.rows);
       setStats({ total: rec.total, recorrentes: rec.recorrentes, naoRecorrentes: rec.naoRecorrentes, percentual: rec.percentual });
       setLoading(false);
     };
     load();
-  }, [clinicId, isAdmin, selectedClinicId, from, to]);
+  }, [clinicId, from, to]);
 
   const exportPdf = () => {
     const htmlRows = rows.map(r => `<tr>

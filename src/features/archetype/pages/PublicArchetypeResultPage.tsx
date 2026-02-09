@@ -62,6 +62,175 @@ const PublicArchetypeResultPage: React.FC = () => {
     return { sorted, topProfiles, secondProfiles };
   }, [result]);
 
+  const downloadPdf = () => {
+    if (!result) return;
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const logoUrl = `${window.location.origin}/logo-onefinc.png`;
+    const now = new Date();
+    const dateLabel = now.toLocaleDateString('pt-BR');
+    const topProfileLabel =
+      result.topProfile === 'EMPATE'
+        ? 'Empate técnico'
+        : PROFILE_LABELS[result.topProfile] || result.topProfile;
+    const topProfilesList =
+      result.topProfile === 'EMPATE' && result.topProfiles.length
+        ? result.topProfiles.map((profile) => PROFILE_LABELS[profile] || profile).join(', ')
+        : topProfileLabel;
+
+    const sortedScores = Object.entries(result.percentages)
+      .map(([profile, value]) => ({
+        profile,
+        label: PROFILE_LABELS[profile] || profile,
+        value,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    const rowsHtml = sortedScores
+      .map(
+        (item) => `
+          <tr>
+            <td>${escapeHtml(item.label)}</td>
+            <td>${item.value.toFixed(0)}%</td>
+          </tr>
+        `
+      )
+      .join('');
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`
+      <html>
+        <head>
+          <title>Resultado do Teste de Perfil</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              font-family: "Segoe UI", Arial, sans-serif;
+              color: #111827;
+              padding: 32px;
+            }
+            .header {
+              display: flex;
+              align-items: center;
+              gap: 16px;
+              border-bottom: 1px solid #e5e7eb;
+              padding-bottom: 16px;
+              margin-bottom: 24px;
+            }
+            .logo {
+              width: 56px;
+              height: 56px;
+              object-fit: contain;
+            }
+            .brand h1 {
+              margin: 0;
+              font-size: 22px;
+            }
+            .brand p {
+              margin: 4px 0 0;
+              color: #6b7280;
+              font-size: 12px;
+            }
+            h2 {
+              margin: 0 0 8px;
+              font-size: 20px;
+            }
+            .section {
+              margin-bottom: 20px;
+            }
+            .tag {
+              display: inline-block;
+              padding: 4px 10px;
+              border-radius: 999px;
+              background: #eef2ff;
+              color: #4338ca;
+              font-size: 11px;
+              font-weight: 600;
+              letter-spacing: 0.08em;
+              text-transform: uppercase;
+              margin-bottom: 10px;
+            }
+            .summary {
+              background: #f9fafb;
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              padding: 16px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 8px;
+              font-size: 13px;
+            }
+            th, td {
+              border: 1px solid #e5e7eb;
+              padding: 8px;
+              text-align: left;
+            }
+            th {
+              background: #f3f4f6;
+              font-weight: 600;
+            }
+            .footer {
+              margin-top: 32px;
+              font-size: 11px;
+              color: #9ca3af;
+              border-top: 1px solid #e5e7eb;
+              padding-top: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <img src="${logoUrl}" alt="OneFinc" class="logo" />
+            <div class="brand">
+              <h1>OneFinc</h1>
+              <p>Resultado do Teste de Perfil</p>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="tag">Resumo</span>
+            <div class="summary">
+              <h2>${escapeHtml(topProfileLabel)}</h2>
+              <p>${escapeHtml(summaryText || '')}</p>
+              <p><strong>Perfis em destaque:</strong> ${escapeHtml(topProfilesList)}</p>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="tag">Pontuação</span>
+            <table>
+              <thead>
+                <tr>
+                  <th>Perfil</th>
+                  <th>Percentual</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="footer">
+            Relatório gerado em ${escapeHtml(dateLabel)}.
+          </div>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
+
   if (!result) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
@@ -170,12 +339,13 @@ const PublicArchetypeResultPage: React.FC = () => {
         </div>
 
         {publicToken && (
-          <Link
-            to={`/public/perfil/${publicToken}`}
+          <button
+            type="button"
+            onClick={downloadPdf}
             className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-200 text-gray-600"
           >
-            Refazer teste
-          </Link>
+            Baixar PDF
+          </button>
         )}
       </div>
     </div>

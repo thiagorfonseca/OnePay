@@ -37,7 +37,7 @@ const rangeFromPeriod = (period: Period) => {
 const toCsvCell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
 
 const CommercialRanking: React.FC = () => {
-  const { clinicId, isAdmin, selectedClinicId } = useAuth();
+  const { effectiveClinicId: clinicId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>('faturamento');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -49,10 +49,14 @@ const CommercialRanking: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!clinicId && !isAdmin) return;
+      if (!clinicId) {
+        setRows([]);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       const data = await fetchCommercialData({
-        clinicId: isAdmin ? selectedClinicId || undefined : clinicId,
+        clinicId,
         from: from || undefined,
         to: to || undefined,
       });
@@ -60,7 +64,7 @@ const CommercialRanking: React.FC = () => {
       setLoading(false);
     };
     load();
-  }, [clinicId, isAdmin, selectedClinicId, from, to]);
+  }, [clinicId, from, to]);
 
   const categoryOptions = useMemo(() => {
     const set = new Set<string>();

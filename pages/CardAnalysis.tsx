@@ -202,8 +202,8 @@ const formatNumber = (value: number) => {
 };
 
 const CardAnalysis: React.FC = () => {
-  const { clinicId, isAdmin, selectedClinicId } = useAuth();
-  const effectiveClinic = (isAdmin ? selectedClinicId : clinicId) || clinicId || null;
+  const { effectiveClinicId: clinicId } = useAuth();
+  const effectiveClinic = clinicId || null;
   const [revenues, setRevenues] = useState<RevenueRow[]>([]);
   const [period, setPeriod] = useState<Period>('mes');
   const [dateStart, setDateStart] = useState(getRange('mes').start);
@@ -219,6 +219,10 @@ const CardAnalysis: React.FC = () => {
   const fetchData = useCallback(async () => {
     try {
       setFetchError(null);
+      if (!effectiveClinic) {
+        setRevenues([]);
+        return;
+      }
       let selectCols = 'id, data_competencia, data_recebimento, recebimento_parcelas, valor_bruto, valor_liquido, valor, forma_pagamento, paciente, parcelas, bandeira, nsu, observacoes';
       let query = supabase.from('revenues').select(selectCols);
       if (effectiveClinic) query = query.eq('clinic_id', effectiveClinic);

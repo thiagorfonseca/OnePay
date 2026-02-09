@@ -6,8 +6,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 
 const Reconciliation: React.FC = () => {
-  const { clinicId, isAdmin, selectedClinicId } = useAuth();
-  const effectiveClinic = (isAdmin ? selectedClinicId : clinicId) || clinicId || null;
+  const { effectiveClinicId: clinicId } = useAuth();
+  const effectiveClinic = clinicId || null;
 
   // State
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,12 @@ const Reconciliation: React.FC = () => {
   // 1. Initial Load: Accounts & Categories
   useEffect(() => {
     const init = async () => {
+      if (!effectiveClinic) {
+        setAccounts([]);
+        setSelectedAccountId('');
+        setCategories([]);
+        return;
+      }
       let accQuery = supabase.from('bank_accounts').select('*');
       if (effectiveClinic) accQuery = accQuery.eq('clinic_id', effectiveClinic);
       const { data: accs } = await accQuery;

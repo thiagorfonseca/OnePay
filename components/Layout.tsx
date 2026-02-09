@@ -1,6 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ClinicSwitcher from './admin/ClinicSwitcher';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -13,7 +13,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
-  const { isSystemAdmin, isAdmin, hasPageAccess, clinic, user, profile, clinicUser } = useAuth();
+  const { isSystemAdmin, isAdmin, hasPageAccess, clinic, user, profile, clinicUser, selectedClinicId, setSelectedClinicId } = useAuth();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') return {};
     try {
@@ -345,8 +346,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
         <div className="py-4 md:py-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
           {isSystemAdmin && (
-            <div className="flex justify-end">
-              <ClinicSwitcher />
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-end">
+                <ClinicSwitcher />
+              </div>
+              {selectedClinicId && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+                  <span>Você está acessando uma clínica selecionada.</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClinicId(null);
+                      navigate('/admin/clinics');
+                    }}
+                    className="px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700"
+                  >
+                    Retornar Admin
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {children}

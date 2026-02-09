@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl, formatDate } from '../lib/utils';
+import { useAuth } from '../src/auth/AuthProvider';
 
 interface AdminProps {
   initialTab?: 'overview' | 'clinics' | 'users';
@@ -66,6 +67,7 @@ const getClinicInitials = (name: string) => {
 
 const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const navigate = useNavigate();
+  const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
   const PAGE_OPTIONS = [
     { value: '/', label: 'Dashboard' },
     { value: '/incomes', label: 'Receitas' },
@@ -447,6 +449,24 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     }
   };
 
+  const handleDeleteClinic = async (clinic: any) => {
+    const label = clinic.name || clinic.id || 'esta clínica';
+    if (!confirm(`Excluir ${label}? Essa ação é permanente.`)) return;
+    try {
+      await (supabase as any).from('clinic_packages').delete().eq('clinic_id', clinic.id);
+      const { error } = await supabase.from('clinics').delete().eq('id', clinic.id);
+      if (error) throw error;
+      setClinics((prev) => prev.filter((item) => item.id !== clinic.id));
+      setSelectedClinics((prev) => prev.filter((id) => id !== clinic.id));
+      if (editingClinicId === clinic.id) {
+        setShowClinicModal(false);
+        resetEditClinicForm();
+      }
+    } catch (err: any) {
+      alert('Erro ao excluir clínica: ' + err.message);
+    }
+  };
+
   const handleCreateUser = async () => {
     setSavingUser(true);
     try {
@@ -789,7 +809,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Imagem da clínica</label>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="h-16 w-16 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                <div className="h-[150px] w-[150px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
                   {clinicLogoPreview || clinicForm.logo_url ? (
                     <img
                       src={clinicLogoPreview || clinicForm.logo_url || ''}
@@ -924,13 +944,24 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             </div>
           </form>
 
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar clínica por nome..."
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
-          />
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar clínica por nome..."
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as any)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="todas">Todas</option>
+              <option value="ativas">Ativas</option>
+              <option value="inativas">Inativas</option>
+            </select>
+          </div>
 
           <div className="border border-gray-100 rounded-lg divide-y">
             {filteredClinics.map(clinic => {
@@ -942,7 +973,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                       if (e.target.checked) setSelectedClinics(prev => [...prev, clinic.id]);
                       else setSelectedClinics(prev => prev.filter(id => id !== clinic.id));
                     }} />
-                    <div className="h-12 w-12 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                    <div className="h-[150px] w-[150px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
                       {clinic.logo_url ? (
                         <img src={clinic.logo_url} alt={`Logo de ${clinic.name || 'clínica'}`} className="h-full w-full object-cover object-center" />
                       ) : (
@@ -950,26 +981,47 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                       )}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800">{clinic.name} {!clinic.ativo && <span className="text-xs text-red-600">(inativa)</span>}</p>
-                      <p className="text-xs text-gray-500">ID: {clinic.id} • Plano: {clinic.plano || '—'}</p>
-                      <p className="text-xs text-gray-500">Contato: {clinic.responsavel_nome || '-'} • {clinic.email_contato || '-'} • {clinic.telefone_contato || '-'}</p>
-                      {clinic.paginas_liberadas && clinic.paginas_liberadas.length > 0 && (
-                        <p className="text-xs text-gray-500">
-                          Páginas: {clinic.paginas_liberadas.map((p: string) => PAGE_LABEL_MAP[p] || p).join(', ')}
-                        </p>
-                      )}
+                      <p className="font-semibold text-gray-800">
+                        <span className="text-xs text-gray-500">ID: {clinic.id}</span>{' '}
+                        {clinic.name}{' '}
+                        {!clinic.ativo && <span className="text-xs text-red-600">(inativa)</span>}
+                      </p>
+                      <p className="text-xs text-gray-500">Pacote: {clinic.plano || '—'}</p>
+                      <p className="text-xs text-gray-500">Contato: {clinic.responsavel_nome || '-'} • {clinic.email_contato || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isSystemAdmin && (
+                      <button
+                        onClick={() => {
+                          setSelectedClinicId(clinic.id);
+                          navigate('/');
+                        }}
+                        className="text-sm text-emerald-600"
+                      >
+                        Acessar
+                      </button>
+                    )}
                     <button
                       onClick={() => openEditClinicModal(clinic)}
                       className="text-sm text-brand-600"
                     >
                       Editar
                     </button>
+                    <button
+                      onClick={() => handleDeleteClinic(clinic)}
+                      className="text-sm text-red-600"
+                    >
+                      Excluir
+                    </button>
                     <span className={`px-2 py-1 text-xs rounded-full ${clinic.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
                       {clinic.ativo ? 'Ativa' : 'Inativa'}
                     </span>
+                    {isSystemAdmin && selectedClinicId === clinic.id && (
+                      <span className="px-2 py-1 text-xs rounded-full bg-amber-50 text-amber-700">
+                        Em uso
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -1008,7 +1060,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                     <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Imagem da clínica</label>
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="h-16 w-16 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                      <div className="h-[150px] w-[150px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
                         {editClinicLogoPreview || editClinicForm.logo_url ? (
                           <img
                             src={editClinicLogoPreview || editClinicForm.logo_url || ''}

@@ -6,8 +6,8 @@ import { formatCurrency } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
 
 const BankAccounts: React.FC = () => {
-  const { clinicId, isAdmin, selectedClinicId } = useAuth();
-  const effectiveClinic = (isAdmin ? selectedClinicId : clinicId) || clinicId || null;
+  const { effectiveClinicId: clinicId } = useAuth();
+  const effectiveClinic = clinicId || null;
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -207,6 +207,11 @@ const BankAccounts: React.FC = () => {
   const fetchAccounts = async () => {
     try {
       setLoading(true);
+      if (!effectiveClinic) {
+        setAccounts([]);
+        setLoading(false);
+        return;
+      }
       let query = supabase.from('bank_accounts').select('*');
       if (effectiveClinic) query = query.eq('clinic_id', effectiveClinic);
       const { data, error } = await query;
@@ -229,6 +234,10 @@ const BankAccounts: React.FC = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      if (!effectiveClinic) {
+        alert('Selecione uma clínica antes de salvar.');
+        return;
+      }
       const initialBalance = parseBalanceValue(formData.initial_balance);
       if (editingId) {
         const editingAccount = accounts.find((acc) => acc.id === editingId);

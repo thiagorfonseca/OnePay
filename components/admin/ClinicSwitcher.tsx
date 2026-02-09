@@ -8,12 +8,12 @@ interface Clinic {
 }
 
 const ClinicSwitcher: React.FC = () => {
-  const { isAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
+  const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isSystemAdmin) return;
     const load = async () => {
       setLoading(true);
       const { data } = await supabase
@@ -24,9 +24,9 @@ const ClinicSwitcher: React.FC = () => {
       setLoading(false);
     };
     load();
-  }, [isAdmin]);
+  }, [isSystemAdmin]);
 
-  if (!isAdmin) return null;
+  if (!isSystemAdmin) return null;
 
   return (
     <div className="flex items-center gap-2 text-sm">
