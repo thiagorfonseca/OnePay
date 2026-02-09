@@ -85,7 +85,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     { value: '/settings?section=profissionais', label: 'Configurações • Profissionais' },
     { value: '/settings?section=fornecedores', label: 'Configurações • Fornecedores' },
     { value: '/settings?section=usuarios', label: 'Configurações • Usuários' },
-    { value: '/settings/perfil-links', label: 'Configurações • Links de perfil' },
     { value: '/commercial/dashboard', label: 'Comercial • Dashboard' },
     { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
     { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },
@@ -982,7 +981,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
 
           {showClinicModal && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-3xl space-y-4">
+              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-auto space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-gray-800">Editar clínica</h4>
                   <button

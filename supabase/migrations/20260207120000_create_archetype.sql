@@ -178,20 +178,31 @@ create policy "archetype_respondents_insert"
 
 -- Answers: public insert guarded by active token
 
+create or replace function public.is_archetype_respondent_valid(p_respondent_id uuid, p_clinic_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+set row_security = off
+as $$
+  select exists (
+    select 1
+    from public.archetype_respondents r
+    join public.archetype_public_links l on l.token = r.public_token and l.is_active = true
+    where r.id = p_respondent_id
+      and r.clinic_id = p_clinic_id
+      and l.clinic_id = r.clinic_id
+      and l.audience_type = r.audience_type
+  );
+$$;
+
 drop policy if exists "archetype_answers_insert_anon" on public.archetype_answers;
 create policy "archetype_answers_insert_anon"
   on public.archetype_answers
   for insert
   to anon
   with check (
-    exists (
-      select 1
-      from public.archetype_respondents r
-      join public.archetype_public_links l on l.token = r.public_token and l.is_active = true
-      where r.id = public.archetype_answers.respondent_id
-        and r.clinic_id = public.archetype_answers.clinic_id
-        and r.audience_type = l.audience_type
-    )
+    public.is_archetype_respondent_valid(public.archetype_answers.respondent_id, public.archetype_answers.clinic_id)
   );
 
 -- Answers: authenticated read
@@ -225,3 +236,10 @@ create policy "archetype_answers_insert"
         and cu.role in ('system_owner', 'super_admin')
     )
   );
+
+grant select on public.archetype_public_links to anon, authenticated;
+grant insert on public.archetype_respondents to anon, authenticated;
+grant insert on public.archetype_answers to anon, authenticated;
+grant select on public.archetype_respondents to authenticated;
+grant select on public.archetype_answers to authenticated;
+grant update, delete on public.archetype_public_links to authenticated;

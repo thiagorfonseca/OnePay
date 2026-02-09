@@ -98,7 +98,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { name: 'Procedimentos', href: '/settings?section=procedimentos', icon: CheckSquare },
         { name: 'Profissionais', href: '/settings?section=profissionais', icon: User },
         { name: 'Fornecedores', href: '/settings?section=fornecedores', icon: FileText },
-        { name: 'Links de Perfil', href: '/settings/perfil-links', icon: Link2 },
         { name: 'Usuários', href: '/settings?section=usuarios', icon: Users, adminOnly: true },
       ],
     },

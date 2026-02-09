@@ -39,4 +39,6 @@ export const ARCHETYPE_QUESTIONS: ReadonlyArray<Readonly<[string, string, string
   ['ACOMODADO', 'CRÍTICO', 'ASTUTO', 'INSTÁVEL'],
   ['ANIMADO', 'ANALÍTICO', 'AVENTUREIRO', 'ADAPTÁVEL'],
   ['SERENO', 'PERSUASIVO', 'PERSISTENTE', 'BRINCALHÃO'],
+  ['ATENCIOSO', 'CONTROLADO', 'ENERGÉTICO', 'SOCIÁVEL'],
+  ['DOADOR', 'SUBMISSO', 'COMPETITIVO', 'CONVINCENTE'],
 ] as const;

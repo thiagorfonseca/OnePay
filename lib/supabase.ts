@@ -36,3 +36,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
     storageKey: 'sb-auth',
   },
 });
+
+const noopStorage = {
+  getItem: (_key: string) => null,
+  setItem: (_key: string, _value: string) => {},
+  removeItem: (_key: string) => {},
+};
+
+// Cliente anon para rotas públicas (não herda sessão logada)
+export const supabasePublic = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    flowType: 'implicit',
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+    storage: noopStorage,
+    storageKey: 'sb-auth-public',
+  },
+});

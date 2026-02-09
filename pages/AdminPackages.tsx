@@ -29,7 +29,6 @@ const PAGE_OPTIONS = [
   { value: '/settings?section=profissionais', label: 'Configurações • Profissionais' },
   { value: '/settings?section=fornecedores', label: 'Configurações • Fornecedores' },
   { value: '/settings?section=usuarios', label: 'Configurações • Usuários' },
-  { value: '/settings/perfil-links', label: 'Configurações • Links de perfil' },
   { value: '/commercial/dashboard', label: 'Comercial • Dashboard' },
   { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
   { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },

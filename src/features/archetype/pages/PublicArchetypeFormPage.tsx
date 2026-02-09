@@ -147,10 +147,18 @@ const PublicArchetypeFormPage: React.FC = () => {
         };
       });
 
+      const safeToken = publicToken.trim();
+      const safeClinic = tokenInfo.clinic_id.trim();
+      const safeAudience = tokenInfo.audience_type?.trim().toUpperCase();
+
+      if (!safeToken || !safeClinic || !safeAudience) {
+        throw new Error('Token inválido. Atualize a página e tente novamente.');
+      }
+
       await submitRespondent({
-        clinic_id: tokenInfo.clinic_id,
-        public_token: publicToken,
-        audience_type: tokenInfo.audience_type,
+        clinic_id: safeClinic,
+        public_token: safeToken,
+        audience_type: safeAudience,
         name: form.name.trim(),
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
@@ -176,9 +184,10 @@ const PublicArchetypeFormPage: React.FC = () => {
       }
 
       navigate(`/public/perfil/${publicToken}/resultado`, { state: { result } });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Não foi possível salvar suas respostas. Tente novamente.');
+      const fallback = 'Não foi possível salvar suas respostas. Tente novamente.';
+      setError(err?.message ? `${fallback} (${err.message})` : fallback);
     } finally {
       setSubmitting(false);
     }
@@ -200,86 +209,110 @@ const PublicArchetypeFormPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-800">Teste de Perfil Comportamental</h1>
-          <p className="text-gray-500">Responda 40 perguntas e descubra seu perfil predominante.</p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
+      <div className="max-w-5xl mx-auto px-4 py-12 space-y-8">
+        <header className="space-y-3 text-center">
+          <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold uppercase tracking-wide">
+            Questionário comportamental
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">Teste de Perfil Comportamental</h1>
+          <p className="text-gray-500 max-w-2xl mx-auto">
+            Responda {TOTAL_QUESTIONS} perguntas para mapear seu estilo de comunicação, decisão e execução.
+            Não existem respostas certas ou erradas.
+          </p>
         </header>
 
         {step === 'intro' && (
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800">Antes de começar</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="flex flex-col gap-1 text-sm text-gray-600">
-                Nome *
+          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-5 shadow-sm">
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold text-gray-800">Antes de começar</h2>
+                <p className="text-sm text-gray-500">Preencha seus dados básicos e siga para as perguntas.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="flex flex-col gap-1 text-sm text-gray-600">
+                  Nome *
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="px-3 py-2 border border-gray-200 rounded-lg"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-gray-600">
+                  Email
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="px-3 py-2 border border-gray-200 rounded-lg"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-gray-600">
+                  WhatsApp
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="px-3 py-2 border border-gray-200 rounded-lg"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-gray-600">
+                  Profissão
+                  <input
+                    type="text"
+                    value={form.profession}
+                    onChange={(e) => setForm({ ...form, profession: e.target.value })}
+                    className="px-3 py-2 border border-gray-200 rounded-lg"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-gray-600 sm:col-span-2">
+                  Cidade
+                  <input
+                    type="text"
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    className="px-3 py-2 border border-gray-200 rounded-lg"
+                  />
+                </label>
+              </div>
+              <label className="flex items-start gap-2 text-sm text-gray-600">
                 <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-lg"
+                  type="checkbox"
+                  checked={form.consent}
+                  onChange={(e) => setForm({ ...form, consent: e.target.checked })}
+                  className="mt-1"
                 />
+                <span>Concordo com o uso dos meus dados conforme a LGPD.</span>
               </label>
-              <label className="flex flex-col gap-1 text-sm text-gray-600">
-                Email
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-lg"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm text-gray-600">
-                WhatsApp
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-lg"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm text-gray-600">
-                Profissão
-                <input
-                  type="text"
-                  value={form.profession}
-                  onChange={(e) => setForm({ ...form, profession: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-lg"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm text-gray-600">
-                Cidade
-                <input
-                  type="text"
-                  value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-lg"
-                />
-              </label>
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              <button
+                type="button"
+                onClick={handleStart}
+                className="px-6 py-3 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700"
+              >
+                Iniciar teste
+              </button>
             </div>
-            <label className="flex items-start gap-2 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={form.consent}
-                onChange={(e) => setForm({ ...form, consent: e.target.checked })}
-                className="mt-1"
-              />
-              <span>Concordo com o uso dos meus dados conforme a LGPD.</span>
-            </label>
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            <button
-              type="button"
-              onClick={handleStart}
-              className="px-6 py-3 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700"
-            >
-              Iniciar teste
-            </button>
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Como funciona</h3>
+              <div className="space-y-3 text-sm text-gray-600">
+                <p>Você verá {TOTAL_QUESTIONS} perguntas, cada uma com 4 palavras.</p>
+                <p>Escolha a palavra que mais combina com você no momento.</p>
+                <p>O teste leva de 6 a 8 minutos em média.</p>
+              </div>
+              <div className="bg-brand-50 text-brand-700 rounded-xl p-4 text-sm">
+                Suas respostas são usadas apenas para gerar o resultado do perfil comportamental.
+              </div>
+            </div>
           </div>
         )}
 
         {step === 'quiz' && (
           <div className="space-y-6">
-            <Progress current={answeredCount} total={TOTAL_QUESTIONS} label="Respondidas" />
+            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <Progress current={answeredCount} total={TOTAL_QUESTIONS} label="Respondidas" />
+            </div>
             <QuestionCard
               index={currentIndex}
               total={TOTAL_QUESTIONS}

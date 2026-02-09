@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, supabasePublic } from '../../../lib/supabase';
 import type { ArchetypeAnswer, ArchetypeRespondentRow, ArchetypeScores, PublicLinkRow, PublicTokenResolution } from './types';
 
 const normalizeScores = (scores: any): ArchetypeScores => {
@@ -11,10 +11,11 @@ const normalizeScores = (scores: any): ArchetypeScores => {
 };
 
 export const resolvePublicToken = async (token: string): Promise<PublicTokenResolution | null> => {
-  const { data, error } = await supabase
+  const safeToken = token.trim();
+  const { data, error } = await supabasePublic
     .from('archetype_public_links')
     .select('clinic_id, audience_type, is_active')
-    .eq('token', token)
+    .eq('token', safeToken)
     .eq('is_active', true)
     .maybeSingle();
   if (error || !data) return null;
@@ -37,27 +38,30 @@ export const submitRespondent = async (payload: {
   answers: ArchetypeAnswer[];
 }) => {
   const { answers, ...respondent } = payload;
-  const { data: created, error } = await supabase
-    .from('archetype_respondents')
-    .insert([respondent])
-    .select('id')
-    .single();
-  if (error || !created?.id) throw error || new Error('Erro ao salvar respondente.');
-
-  const answerRows = answers.map((answer) => ({
-    clinic_id: respondent.clinic_id,
-    respondent_id: created.id,
+  const answersPayload = answers.map((answer) => ({
     question_id: answer.questionId,
     selected_word: answer.selectedWord,
     scored_profile: answer.scoredProfile,
   }));
-  const { error: answersError } = await supabase.from('archetype_answers').insert(answerRows);
-  if (answersError) {
-    await supabase.from('archetype_respondents').delete().eq('id', created.id);
-    throw answersError;
-  }
 
-  return created.id as string;
+  const { data, error } = await supabasePublic.rpc('submit_archetype_response', {
+    p_public_token: respondent.public_token,
+    p_clinic_id: respondent.clinic_id,
+    p_audience_type: respondent.audience_type,
+    p_name: respondent.name,
+    p_email: respondent.email ?? null,
+    p_phone: respondent.phone ?? null,
+    p_profession: respondent.profession ?? null,
+    p_city: respondent.city ?? null,
+    p_consent_lgpd: respondent.consent_lgpd,
+    p_scores: respondent.scores,
+    p_top_profile: respondent.top_profile,
+    p_top_profiles: respondent.top_profiles ?? null,
+    p_answers: answersPayload,
+  });
+
+  if (error || !data) throw error || new Error('Erro ao salvar respondente.');
+  return data as string;
 };
 
 export const fetchRespondents = async (filters: {
