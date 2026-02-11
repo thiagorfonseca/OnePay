@@ -7,6 +7,10 @@ import { useModalControls } from '../hooks/useModalControls';
 
 const PricingCalculator: React.FC = () => {
   const { effectiveClinicId: clinicId } = useAuth();
+  const storageKey = useMemo(
+    () => `pricing-calculator-settings:${clinicId || 'default'}`,
+    [clinicId]
+  );
   const [expenses, setExpenses] = useState<any[]>([]);
   const [procedures, setProcedures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +28,7 @@ const PricingCalculator: React.FC = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [editingProcedure, setEditingProcedure] = useState<any | null>(null);
   const [savingProcedure, setSavingProcedure] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const parseNumber = (value: string) => {
     const raw = value.trim().replace(/[^0-9,.-]/g, '');
@@ -84,6 +89,56 @@ const PricingCalculator: React.FC = () => {
     if (manualCosts) return;
     setTotalCostsInput(totalCostsFromDb ? formatCurrency(totalCostsFromDb) : formatCurrency(0));
   }, [totalCostsFromDb, manualCosts]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        setSettingsLoaded(true);
+        return;
+      }
+      const data = JSON.parse(raw);
+      if (data.hoursAvailableInput) setHoursAvailableInput(String(data.hoursAvailableInput));
+      if (data.occupancyInput) setOccupancyInput(String(data.occupancyInput));
+      if (data.taxInput) setTaxInput(String(data.taxInput));
+      if (data.marginInput) setMarginInput(String(data.marginInput));
+      if (data.cardFeeInput) setCardFeeInput(String(data.cardFeeInput));
+      if (data.commissionInput) setCommissionInput(String(data.commissionInput));
+      if (data.totalCostsInput) setTotalCostsInput(String(data.totalCostsInput));
+      if (typeof data.manualCosts === 'boolean') setManualCosts(data.manualCosts);
+    } catch (err) {
+      console.warn('Falha ao carregar configurações de precificação.', err);
+    } finally {
+      setSettingsLoaded(true);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !settingsLoaded) return;
+    const payload = {
+      hoursAvailableInput,
+      occupancyInput,
+      taxInput,
+      marginInput,
+      cardFeeInput,
+      commissionInput,
+      totalCostsInput,
+      manualCosts,
+    };
+    window.localStorage.setItem(storageKey, JSON.stringify(payload));
+  }, [
+    settingsLoaded,
+    storageKey,
+    hoursAvailableInput,
+    occupancyInput,
+    taxInput,
+    marginInput,
+    cardFeeInput,
+    commissionInput,
+    totalCostsInput,
+    manualCosts,
+  ]);
 
   const totalCosts = manualCosts ? parseNumber(totalCostsInput) : totalCostsFromDb;
   const hoursAvailable = parseNumber(hoursAvailableInput);
