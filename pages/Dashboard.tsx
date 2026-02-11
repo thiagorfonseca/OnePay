@@ -800,12 +800,8 @@ const Dashboard: React.FC = () => {
     setClearLoading(true);
     setClearError(null);
     try {
-      const [revRes, expRes] = await Promise.all([
-        supabase.from('revenues').delete().eq('clinic_id', effectiveClinicId),
-        supabase.from('expenses').delete().eq('clinic_id', effectiveClinicId),
-      ]);
-      if (revRes.error) throw revRes.error;
-      if (expRes.error) throw expRes.error;
+      const { error } = await supabase.rpc('clear_financial_data', { p_clinic_id: effectiveClinicId });
+      if (error) throw error;
       setClearModalOpen(false);
       fetchDashboardData();
     } catch (err: any) {
