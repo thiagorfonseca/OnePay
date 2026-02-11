@@ -19,6 +19,11 @@ const PricingFocusMatrix: React.FC = () => {
   const [cardFeeInput] = useState('2,5');
   const [commissionInput] = useState('20');
   const [isChartExpanded, setIsChartExpanded] = useState(false);
+  const [visibleBuckets, setVisibleBuckets] = useState({
+    estrela: true,
+    vaca: true,
+    abacaxi: true,
+  });
 
   const parseNumber = (value: string) => {
     const raw = value.trim().replace(/[^0-9,.-]/g, '');
@@ -135,6 +140,58 @@ const PricingFocusMatrix: React.FC = () => {
     return { estrela, vaca, abacaxi };
   }, [points]);
 
+  const filteredBuckets = useMemo(() => {
+    return {
+      estrela: visibleBuckets.estrela ? buckets.estrela : [],
+      vaca: visibleBuckets.vaca ? buckets.vaca : [],
+      abacaxi: visibleBuckets.abacaxi ? buckets.abacaxi : [],
+    };
+  }, [buckets, visibleBuckets]);
+
+  const toggleBucket = (bucket: keyof typeof visibleBuckets) => {
+    setVisibleBuckets((prev) => ({ ...prev, [bucket]: !prev[bucket] }));
+  };
+
+  const bucketStyles = {
+    estrela: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    vaca: 'bg-blue-50 text-blue-700 border-blue-200',
+    abacaxi: 'bg-red-50 text-red-700 border-red-200',
+  } as const;
+
+  const bucketButtonClass = (active: boolean, bucket: keyof typeof bucketStyles) =>
+    `px-3 py-1 rounded-full text-xs font-semibold border transition ${
+      active ? bucketStyles[bucket] : 'bg-white text-gray-500 border-gray-200'
+    }`;
+
+  const renderBucketFilters = () => (
+    <div className="absolute right-3 top-3 z-10 flex flex-wrap gap-2 bg-white/90 backdrop-blur px-3 py-2 rounded-full border border-gray-200 shadow-sm">
+      <button
+        type="button"
+        onClick={() => toggleBucket('estrela')}
+        aria-pressed={visibleBuckets.estrela}
+        className={bucketButtonClass(visibleBuckets.estrela, 'estrela')}
+      >
+        Estrela
+      </button>
+      <button
+        type="button"
+        onClick={() => toggleBucket('vaca')}
+        aria-pressed={visibleBuckets.vaca}
+        className={bucketButtonClass(visibleBuckets.vaca, 'vaca')}
+      >
+        Vaca leiteira
+      </button>
+      <button
+        type="button"
+        onClick={() => toggleBucket('abacaxi')}
+        aria-pressed={visibleBuckets.abacaxi}
+        className={bucketButtonClass(visibleBuckets.abacaxi, 'abacaxi')}
+      >
+        Abacaxi
+      </button>
+    </div>
+  );
+
   const TooltipContent = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const data = payload[0].payload;
@@ -187,7 +244,8 @@ const PricingFocusMatrix: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="h-[420px]">
+          <div className="relative h-[420px]">
+            {renderBucketFilters()}
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -208,9 +266,9 @@ const PricingFocusMatrix: React.FC = () => {
                 <Tooltip content={<TooltipContent />} />
                 <Legend />
                 <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
-                <Scatter name="Estrela" data={buckets.estrela} fill="#22c55e" />
-                <Scatter name="Vaca leiteira" data={buckets.vaca} fill="#3b82f6" />
-                <Scatter name="Abacaxi" data={buckets.abacaxi} fill="#ef4444" />
+                <Scatter name="Estrela" data={filteredBuckets.estrela} fill="#22c55e" />
+                <Scatter name="Vaca leiteira" data={filteredBuckets.vaca} fill="#3b82f6" />
+                <Scatter name="Abacaxi" data={filteredBuckets.abacaxi} fill="#ef4444" />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
@@ -244,6 +302,7 @@ const PricingFocusMatrix: React.FC = () => {
             </div>
 
             <div className="relative flex-1 min-h-[360px]">
+              {renderBucketFilters()}
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -264,9 +323,9 @@ const PricingFocusMatrix: React.FC = () => {
                   <Tooltip content={<TooltipContent />} />
                   <Legend />
                   <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
-                  <Scatter name="Estrela" data={buckets.estrela} fill="#22c55e" />
-                  <Scatter name="Vaca leiteira" data={buckets.vaca} fill="#3b82f6" />
-                  <Scatter name="Abacaxi" data={buckets.abacaxi} fill="#ef4444" />
+                  <Scatter name="Estrela" data={filteredBuckets.estrela} fill="#22c55e" />
+                  <Scatter name="Vaca leiteira" data={filteredBuckets.vaca} fill="#3b82f6" />
+                  <Scatter name="Abacaxi" data={filteredBuckets.abacaxi} fill="#ef4444" />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
