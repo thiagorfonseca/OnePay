@@ -24,6 +24,7 @@ export type PublicTokenResolution = {
   clinic_id: string;
   audience_type: AudienceType;
   is_active: boolean;
+  collaborator_id?: string | null;
 };
 
 export type ArchetypeRespondentRow = {

@@ -34,6 +34,7 @@ const PublicArchetypeFormPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const draftKey = publicToken ? `archetypeDraft:${publicToken}` : '';
+  const isInternal = tokenInfo?.audience_type === 'INTERNAL';
 
   useEffect(() => {
     if (!publicToken) return;
@@ -89,11 +90,23 @@ const PublicArchetypeFormPage: React.FC = () => {
     window.localStorage.setItem(draftKey, JSON.stringify(payload));
   }, [draftKey, form, answers, currentIndex, step]);
 
+  useEffect(() => {
+    if (!tokenInfo) return;
+    if (tokenInfo.audience_type === 'INTERNAL') {
+      setStep('quiz');
+      setForm((prev) => ({ ...prev, consent: true }));
+    }
+  }, [tokenInfo]);
+
   const answeredCount = useMemo(() => answers.filter((item) => item !== null).length, [answers]);
   const allAnswered = answeredCount === TOTAL_QUESTIONS;
 
   const handleStart = () => {
     setError(null);
+    if (isInternal) {
+      setStep('quiz');
+      return;
+    }
     if (!form.name.trim()) {
       setError('Informe seu nome para continuar.');
       return;
@@ -159,12 +172,12 @@ const PublicArchetypeFormPage: React.FC = () => {
         clinic_id: safeClinic,
         public_token: safeToken,
         audience_type: safeAudience,
-        name: form.name.trim(),
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        profession: form.profession.trim() || null,
-        city: form.city.trim() || null,
-        consent_lgpd: form.consent,
+        name: isInternal ? '' : form.name.trim(),
+        email: isInternal ? null : (form.email.trim() || null),
+        phone: isInternal ? null : (form.phone.trim() || null),
+        profession: isInternal ? null : (form.profession.trim() || null),
+        city: isInternal ? null : (form.city.trim() || null),
+        consent_lgpd: isInternal ? true : form.consent,
         scores,
         top_profile: topProfile,
         top_profiles: topProfile === 'EMPATE' ? topProfiles : null,

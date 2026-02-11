@@ -14,7 +14,7 @@ export const resolvePublicToken = async (token: string): Promise<PublicTokenReso
   const safeToken = token.trim();
   const { data, error } = await supabasePublic
     .from('archetype_public_links')
-    .select('clinic_id, audience_type, is_active')
+    .select('clinic_id, audience_type, is_active, collaborator_id')
     .eq('token', safeToken)
     .eq('is_active', true)
     .maybeSingle();

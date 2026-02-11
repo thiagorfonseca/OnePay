@@ -310,7 +310,8 @@ const HRCollaborators: React.FC = () => {
   useEffect(() => {
     if (!showModal) return;
     const emailKey = form.email.trim().toLowerCase();
-    const nextArchetype = emailKey ? (archetypeByEmail[emailKey] || '') : '';
+    const nextArchetype = emailKey ? archetypeByEmail[emailKey] : '';
+    if (!nextArchetype) return;
     setForm((prev) => (prev.archetype === nextArchetype ? prev : { ...prev, archetype: nextArchetype }));
   }, [showModal, form.email, archetypeByEmail]);
 
