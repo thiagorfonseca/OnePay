@@ -24,6 +24,10 @@ const PublicLinksManagementPage: React.FC = () => {
   const [selectedCollaborator, setSelectedCollaborator] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  const collaboratorMap = useMemo(() => {
+    return Object.fromEntries(collaborators.map((collab) => [collab.id, collab.name]));
+  }, [collaborators]);
+
   const baseUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
     return window.location.origin.replace(/\/$/, '');
@@ -206,6 +210,7 @@ const PublicLinksManagementPage: React.FC = () => {
               <tr>
                 <th className="text-left px-4 py-3">Token</th>
                 <th className="text-left px-4 py-3">Audiência</th>
+                <th className="text-left px-4 py-3">Colaborador</th>
                 <th className="text-left px-4 py-3">Status</th>
                 <th className="text-left px-4 py-3">Link</th>
                 <th className="text-left px-4 py-3">Ações</th>
@@ -216,6 +221,11 @@ const PublicLinksManagementPage: React.FC = () => {
                 <tr key={link.id}>
                   <td className="px-4 py-3 font-medium text-gray-800">{link.token}</td>
                   <td className="px-4 py-3">{link.audience_type === 'INTERNAL' ? 'Interna' : 'Externa'}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {link.audience_type === 'INTERNAL'
+                      ? (link.collaborator_id ? (collaboratorMap[link.collaborator_id] || 'Colaborador') : '—')
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       respondedTokens.has(link.token)
@@ -260,14 +270,14 @@ const PublicLinksManagementPage: React.FC = () => {
               ))}
               {!loading && links.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-gray-400" colSpan={5}>
+                  <td className="px-4 py-6 text-center text-gray-400" colSpan={6}>
                     Nenhum link criado.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-gray-400" colSpan={5}>
+                  <td className="px-4 py-6 text-center text-gray-400" colSpan={6}>
                     Carregando links...
                   </td>
                 </tr>
