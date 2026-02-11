@@ -185,13 +185,11 @@ const HRCollaborators: React.FC = () => {
 
   const resolvedDetail = useMemo(() => {
     if (!detailCollaborator) return null;
-    const stored = detailCollaborator.hr_collaborators?.[0] || {};
     const emailKey = (detailCollaborator.email || '').trim().toLowerCase();
     const respondentProfile = archetypeByEmail[emailKey];
     return {
       ...detailCollaborator,
-      ...stored,
-      archetype: respondentProfile || detailCollaborator.archetype || stored.archetype || '',
+      archetype: respondentProfile || detailCollaborator.archetype || '',
     };
   }, [detailCollaborator, archetypeByEmail]);
 
@@ -200,42 +198,30 @@ const HRCollaborators: React.FC = () => {
     if (!clinicId) return;
     setDetailLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('clinic_users')
-        .select(
-          `
-          id,
-          clinic_id,
-          name,
-          email,
-          role,
-          paginas_liberadas,
-          avatar_url,
-          user_id,
-          created_at,
-          hr_collaborators (
-            birth_date,
-            admission_date,
-            job_title,
-            function_title,
-            contract_type,
-            salary,
-            description,
-            archetype
-          )
-        `
-        )
-        .eq('clinic_id', clinicId)
-        .eq('id', collab.id)
-        .maybeSingle();
-      if (error || !data) return;
-      const stored = data.hr_collaborators?.[0] || {};
-      const emailKey = (data.email || '').trim().toLowerCase();
+      const [userRes, hrRes] = await Promise.all([
+        supabase
+          .from('clinic_users')
+          .select('id, clinic_id, name, email, role, paginas_liberadas, avatar_url, user_id, created_at')
+          .eq('clinic_id', clinicId)
+          .eq('id', collab.id)
+          .maybeSingle(),
+        supabase
+          .from('hr_collaborators')
+          .select('birth_date, admission_date, job_title, function_title, contract_type, salary, description, archetype')
+          .eq('clinic_id', clinicId)
+          .eq('clinic_user_id', collab.id)
+          .maybeSingle(),
+      ]);
+
+      if (userRes.error && hrRes.error) return;
+      const userData = userRes.data || collab;
+      const hrData = hrRes.data || {};
+      const emailKey = (userData.email || '').trim().toLowerCase();
       const respondentProfile = archetypeByEmail[emailKey];
       setDetailCollaborator({
-        ...data,
-        ...stored,
-        archetype: respondentProfile || stored.archetype || '',
+        ...userData,
+        ...hrData,
+        archetype: respondentProfile || (hrData as any).archetype || '',
       });
     } finally {
       setDetailLoading(false);
