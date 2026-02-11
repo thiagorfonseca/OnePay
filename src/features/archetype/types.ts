@@ -61,4 +61,5 @@ export type PublicLinkRow = {
   audience_type: AudienceType;
   is_active: boolean;
   created_by_user_id: string | null;
+  collaborator_id?: string | null;
 };

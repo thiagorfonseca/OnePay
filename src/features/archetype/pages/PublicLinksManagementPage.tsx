@@ -20,6 +20,8 @@ const PublicLinksManagementPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [token, setToken] = useState(generateToken());
   const [audienceType, setAudienceType] = useState<AudienceType>('EXTERNAL');
+  const [collaborators, setCollaborators] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [selectedCollaborator, setSelectedCollaborator] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const baseUrl = useMemo(() => {
@@ -58,10 +60,31 @@ const PublicLinksManagementPage: React.FC = () => {
     loadLinks();
   }, [loadLinks]);
 
+  useEffect(() => {
+    if (!clinicId) return;
+    const loadCollaborators = async () => {
+      const { data } = await supabase
+        .from('clinic_users')
+        .select('id, name, email')
+        .eq('clinic_id', clinicId)
+        .order('name', { ascending: true });
+      setCollaborators((data || []).map((row: any) => ({
+        id: row.id,
+        name: row.name || row.email || 'Colaborador',
+        email: row.email || '',
+      })));
+    };
+    loadCollaborators();
+  }, [clinicId]);
+
   const handleCreate = async () => {
     if (!clinicId) return;
     if (!token.trim()) {
       setError('Informe um token válido.');
+      return;
+    }
+    if (audienceType === 'INTERNAL' && !selectedCollaborator) {
+      setError('Selecione um colaborador para o link interno.');
       return;
     }
     setCreating(true);
@@ -72,9 +95,11 @@ const PublicLinksManagementPage: React.FC = () => {
         token: token.trim(),
         audience_type: audienceType,
         created_by_user_id: user?.id || null,
+        collaborator_id: audienceType === 'INTERNAL' ? selectedCollaborator : null,
       });
       setLinks((prev) => [created, ...prev]);
       setToken(generateToken());
+      setSelectedCollaborator('');
     } catch (err) {
       console.error(err);
       setError('Não foi possível criar o link. Verifique se o token já existe.');
@@ -133,13 +158,34 @@ const PublicLinksManagementPage: React.FC = () => {
           <label className="text-xs text-gray-500">Audiência</label>
           <select
             value={audienceType}
-            onChange={(e) => setAudienceType(e.target.value as AudienceType)}
+            onChange={(e) => {
+              const next = e.target.value as AudienceType;
+              setAudienceType(next);
+              if (next !== 'INTERNAL') setSelectedCollaborator('');
+            }}
             className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
           >
             <option value="INTERNAL">Interna</option>
             <option value="EXTERNAL">Externa</option>
           </select>
         </div>
+        {audienceType === 'INTERNAL' && (
+          <div className="md:col-span-2">
+            <label className="text-xs text-gray-500">Colaborador</label>
+            <select
+              value={selectedCollaborator}
+              onChange={(e) => setSelectedCollaborator(e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
+            >
+              <option value="">Selecione...</option>
+              {collaborators.map((collab) => (
+                <option key={collab.id} value={collab.id}>
+                  {collab.name}{collab.email ? ` • ${collab.email}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex items-end">
           <button
             type="button"

@@ -127,6 +127,7 @@ export const createPublicLink = async (payload: {
   token: string;
   audience_type: string;
   created_by_user_id?: string | null;
+  collaborator_id?: string | null;
 }) => {
   const { data, error } = await supabase.from('archetype_public_links').insert([payload]).select('*').single();
   if (error) throw error;

@@ -167,6 +167,7 @@ export type Database = {
         Row: {
           audience_type: string
           clinic_id: string
+          collaborator_id: string | null
           created_at: string
           created_by_user_id: string | null
           id: string
@@ -176,6 +177,7 @@ export type Database = {
         Insert: {
           audience_type?: string
           clinic_id: string
+          collaborator_id?: string | null
           created_at?: string
           created_by_user_id?: string | null
           id?: string
@@ -185,6 +187,7 @@ export type Database = {
         Update: {
           audience_type?: string
           clinic_id?: string
+          collaborator_id?: string | null
           created_at?: string
           created_by_user_id?: string | null
           id?: string
@@ -197,6 +200,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archetype_public_links_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_users"
             referencedColumns: ["id"]
           },
         ]
