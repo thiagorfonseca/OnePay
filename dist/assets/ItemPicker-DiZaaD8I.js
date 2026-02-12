@@ -1,0 +1,1 @@
+import{j as r}from"./index-HcuLVkXM.js";const t=({items:o,value:a,onChange:n})=>r.jsxs("select",{className:"w-full rounded-md border border-gray-200 px-3 py-2 text-sm",value:a||"",onChange:e=>n(e.target.value),children:[r.jsx("option",{value:"",children:"Selecione um item"}),o.map(e=>r.jsx("option",{value:e.id,children:e.name},e.id))]});export{t as I};

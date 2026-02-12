@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Shield, Building2, Users, LayoutDashboard, LogOut, Menu, BookOpen, Package, User } from 'lucide-react';
+import { Shield, Building2, Users, LayoutDashboard, LogOut, Menu, BookOpen, Package, User, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../src/auth/AuthProvider';
 
@@ -14,6 +14,7 @@ const AdminLayout: React.FC = () => {
     { name: 'Clínicas', href: '/admin/clinics', icon: Building2 },
     { name: 'Usuários', href: '/admin/users', icon: Users },
     { name: 'Equipe', href: '/admin/team', icon: Users },
+    { name: 'Agenda', href: '/admin/agenda', icon: Calendar, highlight: true },
     { name: 'Pacotes', href: '/admin/packages', icon: Package },
     { name: 'Conteúdos', href: '/admin/content', icon: BookOpen },
     { name: 'Perfil', href: '/admin/profile', icon: User },
@@ -53,9 +54,13 @@ const AdminLayout: React.FC = () => {
                 to={item.href}
                 className={`
                   flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
-                  ${isActive(item.href)
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                  ${item.highlight
+                    ? (isActive(item.href)
+                      ? 'bg-amber-700 text-white'
+                      : 'bg-amber-600 text-white hover:bg-amber-700')
+                    : (isActive(item.href)
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')}
                 `}
               >
                 <item.icon size={18} />

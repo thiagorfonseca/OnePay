@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar, ClipboardList, Boxes, Truck, AlertTriangle } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ClinicSwitcher from './admin/ClinicSwitcher';
@@ -30,6 +30,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   });
 
   const navigation = [
+    {
+      name: 'AGENDA',
+      href: '/app/agenda',
+      icon: Calendar,
+      variant: 'highlight-amber',
+    },
     {
       name: 'VENDAS',
       href: '/incomes?new=1',
@@ -97,6 +103,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       href: '/assistant',
       icon: MessageCircle,
       variant: 'highlight',
+    },
+    {
+      name: 'ESTOQUE',
+      href: '/app/estoque',
+      icon: Boxes,
+      children: [
+        { name: 'Dashboard', href: '/app/estoque', icon: LayoutDashboard },
+        { name: 'Catálogo de Itens', href: '/app/estoque/itens', icon: Tag },
+        { name: 'Fornecedores', href: '/app/estoque/fornecedores', icon: Truck },
+        { name: 'Compras', href: '/app/estoque/compras', icon: FileText },
+        { name: 'Estoque & Lotes', href: '/app/estoque/estoque', icon: Boxes },
+        { name: 'Movimentações', href: '/app/estoque/movimentacoes', icon: ClipboardList },
+        { name: 'Baixa Manual', href: '/app/estoque/baixa', icon: CheckSquare },
+        { name: 'Contagem Cíclica', href: '/app/estoque/contagens', icon: ClipboardList },
+        { name: 'Alertas', href: '/app/estoque/alertas', icon: AlertTriangle },
+        { name: 'Insights IA', href: '/app/estoque/insights', icon: BarChart2 },
+        { name: 'Receitas', href: '/app/estoque/receitas', icon: BookOpen },
+      ],
     },
     {
       name: 'Minha Clínica',
@@ -234,7 +258,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const hasChildren = !!(item.children && item.children.length);
               const isConfig = item.name === 'Minha Clínica';
               const isFinanceiro = item.name === 'Financeiro';
-              const isHighlight = item.variant === 'highlight';
+              const isHighlight = item.variant === 'highlight' || item.variant === 'highlight-amber';
+              const highlightTone = item.variant === 'highlight-amber' ? 'amber' : 'brand';
               const itemHref = item.name === 'VENDAS' ? vendasHref : item.href;
               const parentHref = hasPageAccess(item.href) ? item.href : (item.children?.[0]?.href || item.href);
               return (
@@ -283,9 +308,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       className={`
                         flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                         ${isHighlight
-                          ? (isActive(item.href)
-                            ? 'bg-brand-700 text-white'
-                            : 'bg-brand-600 text-white hover:bg-brand-700')
+                          ? (highlightTone === 'amber'
+                            ? (isActive(item.href)
+                              ? 'bg-amber-700 text-white'
+                              : 'bg-amber-600 text-white hover:bg-amber-700')
+                            : (isActive(item.href)
+                              ? 'bg-brand-700 text-white'
+                              : 'bg-brand-600 text-white hover:bg-brand-700'))
                           : (isActive(item.href)
                             ? 'bg-brand-50 text-brand-700'
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')}

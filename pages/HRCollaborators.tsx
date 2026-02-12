@@ -41,6 +41,7 @@ const PAGE_OPTIONS = [
   { value: '/hr/collaborators', label: 'Minha Clínica • Colaboradores' },
   { value: '/hr/feedback', label: 'Recursos Humanos • Feedback' },
   { value: '/hr/meetings', label: 'Recursos Humanos • Reuniões' },
+  { value: '/app/agenda', label: 'Recursos Humanos • Agenda' },
   { value: '/hr/archetypes', label: 'Recursos Humanos • Arquétipos' },
   { value: '/hr/values', label: 'Recursos Humanos • Teoria de valores' },
 ];

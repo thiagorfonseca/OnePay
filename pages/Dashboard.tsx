@@ -786,6 +786,7 @@ const Dashboard: React.FC = () => {
     setSearchParams(searchParams);
   };
 
+  const sb = supabase as any;
   const canClearData = isSystemAdmin;
 
   const handleClearAllData = async () => {
@@ -800,7 +801,7 @@ const Dashboard: React.FC = () => {
     setClearLoading(true);
     setClearError(null);
     try {
-      const { error } = await supabase.rpc('clear_financial_data', { p_clinic_id: effectiveClinicId });
+      const { error } = await sb.rpc('clear_financial_data', { p_clinic_id: effectiveClinicId });
       if (error) throw error;
       setClearModalOpen(false);
       fetchDashboardData();

@@ -1,1 +1,0 @@
-import{j as s}from"./index-CdgcfNTE.js";import{C as t}from"./ContentsList-CeT4jjIS.js";import"./plus-FG4UiPD-.js";import"./x-UApKFb6h.js";const i=()=>s.jsx(t,{type:"course",title:"Cursos",subtitle:"Explore cursos gravados disponíveis para sua clínica.",basePath:"/contents/courses"});export{i as default};

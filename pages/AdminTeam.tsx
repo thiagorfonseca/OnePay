@@ -12,6 +12,7 @@ const ADMIN_PAGE_OPTIONS = [
   { value: '/admin/clinics', label: 'Clínicas' },
   { value: '/admin/users', label: 'Usuários' },
   { value: '/admin/team', label: 'Equipe' },
+  { value: '/admin/agenda', label: 'Agenda' },
   { value: '/admin/packages', label: 'Pacotes' },
   { value: '/admin/content', label: 'Conteúdos' },
   { value: '/admin/profile', label: 'Perfil' },

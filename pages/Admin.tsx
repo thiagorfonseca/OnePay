@@ -102,6 +102,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     { value: '/hr/collaborators', label: 'Minha Clínica • Colaboradores' },
     { value: '/hr/feedback', label: 'Recursos Humanos • Feedback' },
     { value: '/hr/meetings', label: 'Recursos Humanos • Reuniões' },
+    { value: '/app/agenda', label: 'Recursos Humanos • Agenda' },
     { value: '/hr/archetypes', label: 'Recursos Humanos • Arquétipos' },
     { value: '/hr/values', label: 'Recursos Humanos • Teoria de valores' },
     { value: '/analytics/perfil', label: 'Analytics • Perfil comportamental' },

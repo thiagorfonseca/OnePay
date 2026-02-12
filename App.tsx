@@ -28,6 +28,7 @@ const ContentDetail = lazy(() => import('./pages/ContentDetail'));
 const AdminContentList = lazy(() => import('./pages/AdminContentList'));
 const AdminContentDetail = lazy(() => import('./pages/AdminContentDetail'));
 const AdminTeam = lazy(() => import('./pages/AdminTeam'));
+const AdminAgenda = lazy(() => import('./pages/AdminAgenda'));
 const AdminPackages = lazy(() => import('./pages/AdminPackages'));
 const AdminProfile = lazy(() => import('./pages/AdminProfile'));
 const CommercialRanking = lazy(() => import('./pages/CommercialRanking'));
@@ -45,6 +46,18 @@ const HRFeedback = lazy(() => import('./pages/HRFeedback'));
 const HRMeetings = lazy(() => import('./pages/HRMeetings'));
 const HRArchetypes = lazy(() => import('./pages/HRArchetypes'));
 const HRValues = lazy(() => import('./pages/HRValues'));
+const ClinicAgenda = lazy(() => import('./pages/ClinicAgenda'));
+const InventoryDashboard = lazy(() => import('./pages/InventoryDashboard'));
+const InventoryItems = lazy(() => import('./pages/InventoryItems'));
+const InventorySuppliers = lazy(() => import('./pages/InventorySuppliers'));
+const InventoryPurchases = lazy(() => import('./pages/InventoryPurchases'));
+const InventoryStock = lazy(() => import('./pages/InventoryStock'));
+const InventoryMovements = lazy(() => import('./pages/InventoryMovements'));
+const InventoryManualIssue = lazy(() => import('./pages/InventoryManualIssue'));
+const InventoryAlerts = lazy(() => import('./pages/InventoryAlerts'));
+const InventoryInsights = lazy(() => import('./pages/InventoryInsights'));
+const InventoryRecipes = lazy(() => import('./pages/InventoryRecipes'));
+const InventoryCounts = lazy(() => import('./pages/InventoryCounts'));
 const PublicArchetypeFormPage = lazy(() => import('./src/features/archetype/pages/PublicArchetypeFormPage'));
 const PublicArchetypeResultPage = lazy(() => import('./src/features/archetype/pages/PublicArchetypeResultPage'));
 const AnalyticsArchetypePage = lazy(() => import('./src/features/archetype/pages/AnalyticsArchetypePage'));
@@ -220,6 +233,66 @@ function App() {
                 <HRValues />
               </ProtectedRoute>
             } />
+            <Route path="/app/agenda" element={
+              <ProtectedRoute page="/app/agenda">
+                <ClinicAgenda />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque" element={
+              <ProtectedRoute page="/app/estoque">
+                <InventoryDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/itens" element={
+              <ProtectedRoute page="/app/estoque/itens">
+                <InventoryItems />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/fornecedores" element={
+              <ProtectedRoute page="/app/estoque/fornecedores">
+                <InventorySuppliers />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/compras" element={
+              <ProtectedRoute page="/app/estoque/compras">
+                <InventoryPurchases />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/estoque" element={
+              <ProtectedRoute page="/app/estoque/estoque">
+                <InventoryStock />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/movimentacoes" element={
+              <ProtectedRoute page="/app/estoque/movimentacoes">
+                <InventoryMovements />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/baixa" element={
+              <ProtectedRoute page="/app/estoque/baixa">
+                <InventoryManualIssue />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/alertas" element={
+              <ProtectedRoute page="/app/estoque/alertas">
+                <InventoryAlerts />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/insights" element={
+              <ProtectedRoute page="/app/estoque/insights">
+                <InventoryInsights />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/receitas" element={
+              <ProtectedRoute page="/app/estoque/receitas">
+                <InventoryRecipes />
+              </ProtectedRoute>
+            } />
+            <Route path="/app/estoque/contagens" element={
+              <ProtectedRoute page="/app/estoque/contagens">
+                <InventoryCounts />
+              </ProtectedRoute>
+            } />
 
             <Route
               path="/admin"
@@ -234,6 +307,7 @@ function App() {
               <Route path="clinics" element={<Admin initialTab="clinics" />} />
               <Route path="users" element={<Admin initialTab="users" />} />
               <Route path="team" element={<AdminTeam />} />
+              <Route path="agenda" element={<AdminAgenda />} />
               <Route path="packages" element={<AdminPackages />} />
               <Route path="content" element={<AdminContentList />} />
               <Route path="content/:id" element={<AdminContentDetail />} />
