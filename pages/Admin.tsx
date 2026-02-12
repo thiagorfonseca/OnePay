@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare } from 'lucide-react';
+import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl, formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -148,6 +148,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [selectedClinics, setSelectedClinics] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
+  const [clinicViewMode, setClinicViewMode] = useState<'list' | 'boxes'>('list');
   const [clinicUsers, setClinicUsers] = useState<any[]>([]);
   const [userForm, setUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -1018,99 +1019,202 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             </div>
           </form>
 
-          <div className="flex flex-wrap gap-2 items-center">
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar clínica por nome..."
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="todas">Todas</option>
-              <option value="ativas">Ativas</option>
-              <option value="inativas">Inativas</option>
-            </select>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex flex-wrap gap-2 items-center">
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar clínica por nome..."
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value as any)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="todas">Todas</option>
+                <option value="ativas">Ativas</option>
+                <option value="inativas">Inativas</option>
+              </select>
+            </div>
+            <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setClinicViewMode('list')}
+                className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${clinicViewMode === 'list' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                aria-pressed={clinicViewMode === 'list'}
+              >
+                <List size={14} /> Lista
+              </button>
+              <button
+                type="button"
+                onClick={() => setClinicViewMode('boxes')}
+                className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${clinicViewMode === 'boxes' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                aria-pressed={clinicViewMode === 'boxes'}
+              >
+                <LayoutGrid size={14} /> Boxes
+              </button>
+            </div>
           </div>
 
-          <div className="border border-gray-100 rounded-lg divide-y">
-            {filteredClinics.map(clinic => {
-              const selected = selectedClinics.includes(clinic.id);
-              return (
-                <div key={clinic.id} className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" checked={selected} onChange={e => {
-                      if (e.target.checked) setSelectedClinics(prev => [...prev, clinic.id]);
-                      else setSelectedClinics(prev => prev.filter(id => id !== clinic.id));
-                    }} />
-                    <div className="h-[150px] w-[150px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
-                      {clinic.logo_url ? (
-                        <img src={clinic.logo_url} alt={`Logo de ${clinic.name || 'clínica'}`} className="h-full w-full object-cover object-center" />
-                      ) : (
-                        <span>{getClinicInitials(clinic.name || '')}</span>
+          {clinicViewMode === 'list' ? (
+            <div className="border border-gray-100 rounded-lg divide-y">
+              {loading && (
+                <div className="p-4 text-sm text-gray-400 text-center">Carregando...</div>
+              )}
+              {!loading && filteredClinics.map(clinic => {
+                const selected = selectedClinics.includes(clinic.id);
+                return (
+                  <div key={clinic.id} className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={selected} onChange={e => {
+                        if (e.target.checked) setSelectedClinics(prev => [...prev, clinic.id]);
+                        else setSelectedClinics(prev => prev.filter(id => id !== clinic.id));
+                      }} />
+                      <div className="h-[150px] w-[150px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                        {clinic.logo_url ? (
+                          <img src={clinic.logo_url} alt={`Logo de ${clinic.name || 'clínica'}`} className="h-full w-full object-cover object-center" />
+                        ) : (
+                          <span>{getClinicInitials(clinic.name || '')}</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          <span className="text-xs text-gray-500">ID: {clinic.id}</span>{' '}
+                          {clinic.name}{' '}
+                          {!clinic.ativo && <span className="text-xs text-red-600">(inativa)</span>}
+                        </p>
+                        <p className="text-xs text-gray-500">Pacote: {clinic.plano || '—'}</p>
+                        <p className="text-xs text-gray-500">Contato: {clinic.responsavel_nome || '-'} • {clinic.email_contato || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isSystemAdmin && (
+                        <button
+                          onClick={() => {
+                            setSelectedClinicId(clinic.id);
+                            navigate('/');
+                          }}
+                          className="text-sm text-emerald-600"
+                        >
+                          Acessar
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleResendClinicAccess(clinic)}
+                        disabled={resendingAccessId === clinic.id}
+                        className="text-sm text-sky-600 disabled:opacity-50"
+                      >
+                        {resendingAccessId === clinic.id ? 'Enviando...' : 'Reenviar acesso'}
+                      </button>
+                      <button
+                        onClick={() => openEditClinicModal(clinic)}
+                        className="text-sm text-brand-600"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClinic(clinic)}
+                        className="text-sm text-red-600"
+                      >
+                        Excluir
+                      </button>
+                      <span className={`px-2 py-1 text-xs rounded-full ${clinic.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {clinic.ativo ? 'Ativa' : 'Inativa'}
+                      </span>
+                      {isSystemAdmin && selectedClinicId === clinic.id && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-amber-50 text-amber-700">
+                          Em uso
+                        </span>
                       )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-800">
-                        <span className="text-xs text-gray-500">ID: {clinic.id}</span>{' '}
-                        {clinic.name}{' '}
-                        {!clinic.ativo && <span className="text-xs text-red-600">(inativa)</span>}
-                      </p>
-                      <p className="text-xs text-gray-500">Pacote: {clinic.plano || '—'}</p>
-                      <p className="text-xs text-gray-500">Contato: {clinic.responsavel_nome || '-'} • {clinic.email_contato || '-'}</p>
+                  </div>
+                );
+              })}
+              {!loading && filteredClinics.length === 0 && (
+                <div className="p-4 text-sm text-gray-400 text-center">Nenhuma clínica cadastrada.</div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {loading && (
+                <div className="col-span-full p-4 text-sm text-gray-400 text-center">Carregando...</div>
+              )}
+              {!loading && filteredClinics.map(clinic => {
+                const selected = selectedClinics.includes(clinic.id);
+                return (
+                  <div key={clinic.id} className="border border-gray-100 rounded-lg p-4 bg-white flex flex-col gap-3 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <input type="checkbox" checked={selected} onChange={e => {
+                        if (e.target.checked) setSelectedClinics(prev => [...prev, clinic.id]);
+                        else setSelectedClinics(prev => prev.filter(id => id !== clinic.id));
+                      }} />
+                      <div className="h-20 w-20 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                        {clinic.logo_url ? (
+                          <img src={clinic.logo_url} alt={`Logo de ${clinic.name || 'clínica'}`} className="h-full w-full object-cover object-center" />
+                        ) : (
+                          <span>{getClinicInitials(clinic.name || '')}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{clinic.name}</p>
+                        <p className="text-xs text-gray-500 break-all">ID: {clinic.id}</p>
+                        <p className="text-xs text-gray-500">Pacote: {clinic.plano || '—'}</p>
+                        <p className="text-xs text-gray-500">Contato: {clinic.responsavel_nome || '-'} • {clinic.email_contato || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className={`px-2 py-1 rounded-full ${clinic.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {clinic.ativo ? 'Ativa' : 'Inativa'}
+                      </span>
+                      {!clinic.ativo && <span className="text-xs text-red-600">(inativa)</span>}
+                      {isSystemAdmin && selectedClinicId === clinic.id && (
+                        <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-700">
+                          Em uso
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      {isSystemAdmin && (
+                        <button
+                          onClick={() => {
+                            setSelectedClinicId(clinic.id);
+                            navigate('/');
+                          }}
+                          className="text-sm text-emerald-600"
+                        >
+                          Acessar
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleResendClinicAccess(clinic)}
+                        disabled={resendingAccessId === clinic.id}
+                        className="text-sm text-sky-600 disabled:opacity-50"
+                      >
+                        {resendingAccessId === clinic.id ? 'Enviando...' : 'Reenviar acesso'}
+                      </button>
+                      <button
+                        onClick={() => openEditClinicModal(clinic)}
+                        className="text-sm text-brand-600"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClinic(clinic)}
+                        className="text-sm text-red-600"
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isSystemAdmin && (
-                      <button
-                        onClick={() => {
-                          setSelectedClinicId(clinic.id);
-                          navigate('/');
-                        }}
-                        className="text-sm text-emerald-600"
-                      >
-                        Acessar
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleResendClinicAccess(clinic)}
-                      disabled={resendingAccessId === clinic.id}
-                      className="text-sm text-sky-600 disabled:opacity-50"
-                    >
-                      {resendingAccessId === clinic.id ? 'Enviando...' : 'Reenviar acesso'}
-                    </button>
-                    <button
-                      onClick={() => openEditClinicModal(clinic)}
-                      className="text-sm text-brand-600"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClinic(clinic)}
-                      className="text-sm text-red-600"
-                    >
-                      Excluir
-                    </button>
-                    <span className={`px-2 py-1 text-xs rounded-full ${clinic.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {clinic.ativo ? 'Ativa' : 'Inativa'}
-                    </span>
-                    {isSystemAdmin && selectedClinicId === clinic.id && (
-                      <span className="px-2 py-1 text-xs rounded-full bg-amber-50 text-amber-700">
-                        Em uso
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {filteredClinics.length === 0 && (
-              <div className="p-4 text-sm text-gray-400 text-center">Nenhuma clínica cadastrada.</div>
-            )}
-          </div>
+                );
+              })}
+              {!loading && filteredClinics.length === 0 && (
+                <div className="col-span-full p-4 text-sm text-gray-400 text-center">Nenhuma clínica cadastrada.</div>
+              )}
+            </div>
+          )}
 
           {showClinicModal && (
             <div

@@ -29,7 +29,7 @@ const ClinicAgenda: React.FC = () => {
   const { effectiveClinicId: clinicId, clinic } = useAuth();
   const calendarRef = useRef<FullCalendar | null>(null);
   const { toasts, push, dismiss } = useToast();
-  const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('timeGridWeek');
+  const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('dayGridMonth');
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleEventForClinic[]>([]);

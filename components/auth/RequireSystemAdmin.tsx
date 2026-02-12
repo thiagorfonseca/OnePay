@@ -7,7 +7,7 @@ interface Props {
 }
 
 const RequireSystemAdmin: React.FC<Props> = ({ children }) => {
-  const { session, loading, isSystemAdmin, hasAdminPageAccess, adminPages } = useAuth();
+  const { session, loading, isSystemAdmin, isOneDoctorInternal, hasAdminPageAccess, adminPages } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -16,10 +16,10 @@ const RequireSystemAdmin: React.FC<Props> = ({ children }) => {
 
   if (!session) return <Navigate to="/login" replace />;
 
-  if (!isSystemAdmin) return <Navigate to="/access-denied" replace />;
+  if (!isSystemAdmin && !isOneDoctorInternal) return <Navigate to="/access-denied" replace />;
 
   if (!hasAdminPageAccess(location.pathname)) {
-    const fallback = adminPages.length ? adminPages[0] : '/admin/dashboard';
+    const fallback = adminPages.length ? adminPages[0] : (isOneDoctorInternal ? '/admin/clientes' : '/admin/dashboard');
     return <Navigate to={fallback} replace />;
   }
 

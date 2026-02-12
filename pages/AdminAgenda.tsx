@@ -55,7 +55,7 @@ const AdminAgenda: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleEventWithAttendees[]>([]);
   const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
-  const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('timeGridWeek');
+  const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('dayGridMonth');
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
   const [calendarLabel, setCalendarLabel] = useState('');
 

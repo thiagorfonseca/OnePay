@@ -21,6 +21,7 @@ const InventoryDashboard: React.FC = () => {
   const [itemStock, setItemStock] = useState<any[]>([]);
   const [batchStock, setBatchStock] = useState<any[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
     if (!clinicId) return;
@@ -42,6 +43,10 @@ const InventoryDashboard: React.FC = () => {
       .finally(() => setLoading(false));
   }, [clinicId]);
 
+  useEffect(() => {
+    setNow(Date.now());
+  }, [batchStock, movements]);
+
   const metrics = useMemo(() => {
     const itemStockMap = new Map(itemStock.map((row: any) => [row.item_id, row]));
     const criticalItems = items.filter((item) => {
@@ -53,7 +58,7 @@ const InventoryDashboard: React.FC = () => {
     const expiringSoon = batchStock.filter((batch: any) => {
       if (!batch.expiry_date) return false;
       if ((batch.qty_on_hand ?? 0) <= 0) return false;
-      const diff = new Date(batch.expiry_date).getTime() - Date.now();
+      const diff = new Date(batch.expiry_date).getTime() - now;
       return diff <= 1000 * 60 * 60 * 24 * 30;
     });
 

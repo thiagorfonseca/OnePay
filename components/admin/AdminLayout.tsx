@@ -1,12 +1,29 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Shield, Building2, Users, LayoutDashboard, LogOut, Menu, BookOpen, Package, User, Calendar } from 'lucide-react';
+import {
+  Shield,
+  Building2,
+  Users,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  BookOpen,
+  Package,
+  User,
+  Calendar,
+  FileText,
+  ClipboardList,
+  Briefcase,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../src/auth/AuthProvider';
 
 const AdminLayout: React.FC = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({ Comercial: true });
   const { hasAdminPageAccess } = useAuth();
 
   const navigation = [
@@ -17,11 +34,33 @@ const AdminLayout: React.FC = () => {
     { name: 'Agenda', href: '/admin/agenda', icon: Calendar, highlight: true },
     { name: 'Pacotes', href: '/admin/packages', icon: Package },
     { name: 'Conteúdos', href: '/admin/content', icon: BookOpen },
+    {
+      name: 'Comercial',
+      icon: Briefcase,
+      children: [
+        { name: 'Clientes', href: '/admin/clientes', icon: Users },
+        { name: 'Contratos', href: '/admin/contratos', icon: FileText },
+        { name: 'Propostas', href: '/admin/propostas', icon: ClipboardList },
+      ],
+    },
     { name: 'Perfil', href: '/admin/profile', icon: User },
   ];
 
   const isActive = (path: string) => location.pathname.startsWith(path);
-  const visibleNavigation = navigation.filter((item) => hasAdminPageAccess(item.href));
+  const visibleNavigation = navigation
+    .map((item: any) => {
+      if (!item.children) return item;
+      const children = item.children.filter((child: any) => hasAdminPageAccess(child.href));
+      return { ...item, children };
+    })
+    .filter((item: any) => {
+      if (!item.children) return hasAdminPageAccess(item.href);
+      return item.children.length > 0;
+    });
+
+  const toggleGroup = (name: string) => {
+    setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -53,25 +92,69 @@ const AdminLayout: React.FC = () => {
           </div>
 
           <nav className="flex-1 px-4 py-6 space-y-1">
-            {visibleNavigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`
-                  flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
-                  ${item.highlight
-                    ? (isActive(item.href)
-                      ? 'bg-amber-700 text-white'
-                      : 'bg-amber-600 text-white hover:bg-amber-700')
-                    : (isActive(item.href)
-                      ? 'bg-brand-50 text-brand-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')}
-                `}
-              >
-                <item.icon size={18} />
-                {item.name}
-              </Link>
-            ))}
+            {visibleNavigation.map((item: any) => {
+              if (item.children) {
+                const isGroupOpen = openGroups[item.name] ?? false;
+                const isChildActive = item.children.some((child: any) => isActive(child.href));
+                return (
+                  <div key={item.name} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(item.name)}
+                      className={`
+                        w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                        ${isChildActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                      `}
+                    >
+                      <span className="flex items-center gap-3">
+                        <item.icon size={18} />
+                        {item.name}
+                      </span>
+                      {isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </button>
+                    {isGroupOpen ? (
+                      <div className="pl-6 space-y-1">
+                        {item.children.map((child: any) => (
+                          <Link
+                            key={child.name}
+                            to={child.href}
+                            className={`
+                              flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                              ${isActive(child.href)
+                                ? 'bg-brand-50 text-brand-700'
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                            `}
+                          >
+                            <child.icon size={16} />
+                            {child.name}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`
+                    flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                    ${item.highlight
+                      ? (isActive(item.href)
+                        ? 'bg-amber-700 text-white'
+                        : 'bg-amber-600 text-white hover:bg-amber-700')
+                      : (isActive(item.href)
+                        ? 'bg-brand-50 text-brand-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')}
+                  `}
+                >
+                  <item.icon size={18} />
+                  {item.name}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="p-4 border-t border-gray-100">

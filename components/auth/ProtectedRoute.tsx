@@ -18,12 +18,13 @@ const ProtectedRoute: React.FC<Props> = ({ children, page }) => {
 
   if (!session) return <Navigate to="/login" replace />;
 
+  const isOnboardingWelcome = location.pathname === '/app/onboarding/boas-vindas';
   const pageKey = page || `${location.pathname}${location.search}`;
-  if (pageKey && isSystemAdmin && !hasPageAccess(pageKey)) {
+  if (!isOnboardingWelcome && pageKey && isSystemAdmin && !hasPageAccess(pageKey)) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  if (pageKey && !hasPageAccess(pageKey)) {
+  if (!isOnboardingWelcome && pageKey && !hasPageAccess(pageKey)) {
     return <Navigate to="/access-denied" replace />;
   }
 

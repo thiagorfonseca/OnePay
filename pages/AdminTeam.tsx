@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Loader2, Users, Mail, Shield } from 'lucide-react';
+import { Plus, Loader2, Users, Mail, Shield, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -112,6 +112,7 @@ const AdminTeam: React.FC = () => {
   const [savingMember, setSavingMember] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [teamViewMode, setTeamViewMode] = useState<'list' | 'boxes'>('list');
   const callbackUrl = buildPublicUrl('/auth/callback');
   const adminPagesRef = useRef<HTMLDetailsElement | null>(null);
 
@@ -385,13 +386,33 @@ const AdminTeam: React.FC = () => {
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 space-y-4">
-        <div className="flex items-center gap-2 text-gray-800 font-semibold">
-          <Users size={16} />
-          Administradores atuais
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2 text-gray-800 font-semibold">
+            <Users size={16} />
+            Administradores atuais
+          </div>
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setTeamViewMode('list')}
+              className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${teamViewMode === 'list' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              aria-pressed={teamViewMode === 'list'}
+            >
+              <List size={14} /> Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setTeamViewMode('boxes')}
+              className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${teamViewMode === 'boxes' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              aria-pressed={teamViewMode === 'boxes'}
+            >
+              <LayoutGrid size={14} /> Boxes
+            </button>
+          </div>
         </div>
         {loading ? (
           <div className="text-sm text-gray-400">Carregando equipe...</div>
-        ) : (
+        ) : teamViewMode === 'list' ? (
           <div className="border border-gray-100 rounded-lg divide-y">
             {members.map((member) => (
               <div key={member.id} className="p-3 flex items-center justify-between gap-3">
@@ -437,6 +458,54 @@ const AdminTeam: React.FC = () => {
             ))}
             {members.length === 0 && (
               <div className="p-4 text-sm text-gray-400 text-center">Nenhum administrador cadastrado.</div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {members.map((member) => (
+              <div key={member.id} className="border border-gray-100 rounded-lg p-4 bg-white flex flex-col gap-3 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="h-14 w-14 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                    {member.avatar_url ? (
+                      <img src={member.avatar_url} alt={`Foto de ${member.full_name || 'admin'}`} className="h-full w-full object-cover object-center" />
+                    ) : (
+                      <span>{getMemberInitials(member.full_name || '', member.email || '')}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{member.full_name || 'Sem nome'}</p>
+                    <p className="text-xs text-gray-500 break-all">{member.email || 'E-mail não disponível'}</p>
+                    <p className="text-xs text-gray-500">Role: {member.role}</p>
+                    {member.admin_pages && member.admin_pages.length > 0 ? (
+                      <p className="text-xs text-gray-500 break-words">
+                        Admin: {member.admin_pages.map((page: string) => ADMIN_PAGE_LABEL_MAP[page] || page).join(', ')}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400">Admin: acesso completo</p>
+                    )}
+                    <p className="text-xs text-gray-400">ID: {member.id}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => openEditMember(member)}
+                    className="text-sm text-brand-600"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteMember(member)}
+                    className="text-sm text-red-600"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            ))}
+            {members.length === 0 && (
+              <div className="col-span-full p-4 text-sm text-gray-400 text-center">Nenhum administrador cadastrado.</div>
             )}
           </div>
         )}

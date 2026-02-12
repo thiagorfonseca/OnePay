@@ -62,6 +62,19 @@ const PublicArchetypeFormPage = lazy(() => import('./src/features/archetype/page
 const PublicArchetypeResultPage = lazy(() => import('./src/features/archetype/pages/PublicArchetypeResultPage'));
 const AnalyticsArchetypePage = lazy(() => import('./src/features/archetype/pages/AnalyticsArchetypePage'));
 const PublicLinksManagementPage = lazy(() => import('./src/features/archetype/pages/PublicLinksManagementPage'));
+const AdminODClients = lazy(() => import('./pages/AdminODClients'));
+const AdminODClientDetail = lazy(() => import('./pages/AdminODClientDetail'));
+const AdminODContracts = lazy(() => import('./pages/AdminODContracts'));
+const AdminODContractForm = lazy(() => import('./pages/AdminODContractForm'));
+const AdminODProposals = lazy(() => import('./pages/AdminODProposals'));
+const AdminODProposalForm = lazy(() => import('./pages/AdminODProposalForm'));
+const AdminODProposalDetail = lazy(() => import('./pages/AdminODProposalDetail'));
+const PublicProposalForm = lazy(() => import('./pages/PublicProposalForm'));
+const PublicSignatureReturn = lazy(() => import('./pages/PublicSignatureReturn'));
+const PublicPaymentPage = lazy(() => import('./pages/PublicPaymentPage'));
+const PublicPaymentSuccess = lazy(() => import('./pages/PublicPaymentSuccess'));
+const PublicPaymentError = lazy(() => import('./pages/PublicPaymentError'));
+const OnboardingWelcome = lazy(() => import('./pages/OnboardingWelcome'));
 
 function App() {
   return (
@@ -76,6 +89,11 @@ function App() {
             <Route path="/access-denied" element={<AccessDenied />} />
             <Route path="/public/perfil/:publicToken" element={<PublicArchetypeFormPage />} />
             <Route path="/public/perfil/:publicToken/resultado" element={<PublicArchetypeResultPage />} />
+            <Route path="/cadastro/:token" element={<PublicProposalForm />} />
+            <Route path="/assinatura/retorno" element={<PublicSignatureReturn />} />
+            <Route path="/pagamento/:token" element={<PublicPaymentPage />} />
+            <Route path="/pagamento/sucesso" element={<PublicPaymentSuccess />} />
+            <Route path="/pagamento/erro" element={<PublicPaymentError />} />
 
             <Route path="/" element={
               <ProtectedRoute page="/">
@@ -294,6 +312,12 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/app/onboarding/boas-vindas" element={
+              <ProtectedRoute page="/app/onboarding/boas-vindas">
+                <OnboardingWelcome />
+              </ProtectedRoute>
+            } />
+
             <Route
               path="/admin"
               element={
@@ -312,6 +336,14 @@ function App() {
               <Route path="content" element={<AdminContentList />} />
               <Route path="content/:id" element={<AdminContentDetail />} />
               <Route path="profile" element={<AdminProfile />} />
+              <Route path="clientes" element={<AdminODClients />} />
+              <Route path="clientes/:id" element={<AdminODClientDetail />} />
+              <Route path="contratos" element={<AdminODContracts />} />
+              <Route path="contratos/novo" element={<AdminODContractForm />} />
+              <Route path="contratos/:id" element={<AdminODContractForm />} />
+              <Route path="propostas" element={<AdminODProposals />} />
+              <Route path="propostas/nova" element={<AdminODProposalForm />} />
+              <Route path="propostas/:id" element={<AdminODProposalDetail />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" />} />

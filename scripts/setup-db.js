@@ -1,3 +1,4 @@
+/* global process, console */
 /**
  * SCRIPT DE CONFIGURAÇÃO AUTOMÁTICA DO BANCO DE DADOS
  * ES Modules (compatível com "type": "module")

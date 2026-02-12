@@ -43,6 +43,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       variant: 'highlight',
     },
     {
+      name: 'ASSISTENTE AI',
+      href: '/assistant',
+      icon: MessageCircle,
+      variant: 'highlight',
+    },
+    {
       name: 'Financeiro',
       href: '/',
       icon: Wallet,
@@ -97,12 +103,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { name: 'Cursos', href: '/contents/courses', icon: FileText },
         { name: 'Treinamentos', href: '/contents/trainings', icon: TrendingUp },
       ],
-    },
-    {
-      name: 'ASSISTENTE AI',
-      href: '/assistant',
-      icon: MessageCircle,
-      variant: 'highlight',
     },
     {
       name: 'ESTOQUE',

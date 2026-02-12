@@ -9,6 +9,7 @@ type ClinicRow = Database['public']['Tables']['clinics']['Row'];
 
 type AuthRole = 'owner' | 'admin' | 'user';
 type SystemRole = 'system_owner' | 'super_admin';
+type InternalRole = 'one_doctor_admin' | 'one_doctor_sales';
 
 interface AuthContextValue {
   session: Session | null;
@@ -18,6 +19,7 @@ interface AuthContextValue {
   clinic: ClinicRow | null;
   role: AuthRole;
   systemRole: SystemRole | null;
+  isOneDoctorInternal: boolean;
   clinicId: string | null;
   isAdmin: boolean;
   isSystemAdmin: boolean;
@@ -165,6 +167,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const raw = profile?.role;
     if (raw === 'system_owner' || raw === 'super_admin') return raw;
     return null;
+  }, [profile?.role]);
+
+  const isOneDoctorInternal = useMemo(() => {
+    const raw = profile?.role as InternalRole | undefined;
+    return raw === 'one_doctor_admin' || raw === 'one_doctor_sales';
   }, [profile?.role]);
 
   const role: AuthRole = useMemo(() => {
@@ -324,14 +331,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [profile?.admin_pages]);
 
   const hasAdminPageAccess = (page: string) => {
-    if (!isSystemAdmin) return false;
-    if (systemRole === 'system_owner') return true;
     const normalized = normalizeAdminPage(page);
     if (!normalized) return false;
-    if (!adminPages.length) return true;
-    const [base] = normalized.split('?');
-    if (adminPages.includes(base)) return true;
-    return adminPages.some((allowed) => base.startsWith(allowed));
+
+    const crmPages = ['/admin/clientes', '/admin/contratos', '/admin/propostas'];
+
+    if (isSystemAdmin) {
+      if (systemRole === 'system_owner') return true;
+      if (crmPages.some((allowed) => normalized.startsWith(allowed))) return true;
+      if (!adminPages.length) return true;
+      const [base] = normalized.split('?');
+      if (adminPages.includes(base)) return true;
+      return adminPages.some((allowed) => base.startsWith(allowed));
+    }
+
+    if (isOneDoctorInternal) {
+      const allowedDefaults = ['/admin/clientes', '/admin/contratos', '/admin/propostas'];
+      const allowed = adminPages.length ? adminPages : allowedDefaults;
+      const [base] = normalized.split('?');
+      if (allowed.includes(base)) return true;
+      return allowed.some((allowedPage) => base.startsWith(allowedPage));
+    }
+
+    return false;
   };
 
   const effectiveClinicId = useMemo(() => {
@@ -372,6 +394,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clinic,
     role,
     systemRole,
+    isOneDoctorInternal,
     clinicId,
     isAdmin,
     isSystemAdmin,
