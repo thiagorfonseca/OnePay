@@ -265,10 +265,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const normalizePage = (page: string) => {
     const trimmed = page.trim();
     if (!trimmed) return '';
-    const withSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    const cleaned = trimmed === '/' ? '/' : trimmed.replace(/\/+$/, '');
+    const withSlash = cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
     switch (withSlash) {
       case '/dashboard':
         return '/';
+      case '/receitas':
+      case '/receita':
+      case '/income':
+        return '/incomes';
+      case '/vendas':
+      case '/venda':
+        return '/sales';
       case '/course':
       case '/courses':
         return '/contents/courses';
@@ -293,6 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const packagePages = (clinicPackagePages || []).map(normalizePage).filter(Boolean);
 
     if (!packagePages.length && !userPages.length) return [];
+    if (isAdmin && packagePages.length) return Array.from(new Set(packagePages));
     if (!packagePages.length) return Array.from(new Set(userPages));
     if (!userPages.length) return Array.from(new Set(packagePages));
 
@@ -312,8 +321,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const intersection = userPages.filter(matchesPackage);
+    if (!intersection.length && packagePages.length) return Array.from(new Set(packagePages));
     return Array.from(new Set(intersection));
-  }, [clinicUser?.paginas_liberadas, clinicPackagePages]);
+  }, [clinicUser?.paginas_liberadas, clinicPackagePages, isAdmin]);
 
   const allowedPagesSet = useMemo(() => new Set(allowedPages), [allowedPages]);
   const hasPageRules = useMemo(() => {

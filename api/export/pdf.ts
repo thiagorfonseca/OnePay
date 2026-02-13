@@ -200,7 +200,7 @@ export default async function handler(req: any, res: any) {
       const pdfBase64 = await buildPdfFromHtml(html);
       const buffer = Buffer.from(pdfBase64, 'base64');
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename=\"relatorio-gerencial.pdf\"');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio-gerencial.pdf"');
       res.statusCode = 200;
       res.end(buffer);
       return;
@@ -224,7 +224,7 @@ export default async function handler(req: any, res: any) {
       const pdfBase64 = await buildPdfFromHtml(html);
       const buffer = Buffer.from(pdfBase64, 'base64');
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename=\"relatorio-vendas.pdf\"');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio-vendas.pdf"');
       res.statusCode = 200;
       res.end(buffer);
       return;

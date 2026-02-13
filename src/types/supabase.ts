@@ -1373,6 +1373,7 @@ export type Database = {
           clinic_id: string | null
           created_at: string | null
           id: string
+          is_sold: boolean | null
           procedimento: string | null
           procedure_id: string | null
           quantidade: number | null
@@ -1384,6 +1385,7 @@ export type Database = {
           clinic_id?: string | null
           created_at?: string | null
           id?: string
+          is_sold?: boolean | null
           procedimento?: string | null
           procedure_id?: string | null
           quantidade?: number | null
@@ -1395,6 +1397,7 @@ export type Database = {
           clinic_id?: string | null
           created_at?: string | null
           id?: string
+          is_sold?: boolean | null
           procedimento?: string | null
           procedure_id?: string | null
           quantidade?: number | null
@@ -1449,6 +1452,7 @@ export type Database = {
           paciente: string | null
           parcelas: number | null
           recebimento_parcelas: Json | null
+          sale_number: string
           sale_professional_id: string | null
           status: string
           valor: number | null
@@ -1478,6 +1482,7 @@ export type Database = {
           paciente?: string | null
           parcelas?: number | null
           recebimento_parcelas?: Json | null
+          sale_number?: string
           sale_professional_id?: string | null
           status?: string
           valor?: number | null
@@ -1507,6 +1512,7 @@ export type Database = {
           paciente?: string | null
           parcelas?: number | null
           recebimento_parcelas?: Json | null
+          sale_number?: string
           sale_professional_id?: string | null
           status?: string
           valor?: number | null

@@ -67,6 +67,37 @@ const addBusinessDays = (dateString: string, days: number) => {
   return date.toISOString().split('T')[0];
 };
 
+const getSalesRange = (preset: 'day' | 'week' | 'month' | 'quarter', baseDate: string) => {
+  const base = new Date(baseDate);
+  if (Number.isNaN(base.getTime())) {
+    const now = new Date();
+    base.setTime(now.getTime());
+  }
+  if (preset === 'day') {
+    const day = base.toISOString().split('T')[0];
+    return { start: day, end: day };
+  }
+  if (preset === 'week') {
+    const day = base.getDay();
+    const diffToMonday = (day + 6) % 7;
+    const start = new Date(base);
+    start.setDate(base.getDate() - diffToMonday);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+  }
+  if (preset === 'quarter') {
+    const month = base.getMonth();
+    const quarterStartMonth = Math.floor(month / 3) * 3;
+    const start = new Date(base.getFullYear(), quarterStartMonth, 1);
+    const end = new Date(base.getFullYear(), quarterStartMonth + 3, 0);
+    return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+  }
+  const start = new Date(base.getFullYear(), base.getMonth(), 1);
+  const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+  return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+};
+
 const normalizeExpensePaymentMethod = (value?: string | null) => {
   if (!value) return 'PIX';
   const raw = value
@@ -92,6 +123,12 @@ type ManualParcela = {
   numero_folha?: string;
 };
 
+type SelectedProcedure = {
+  id: string;
+  quantidade: number;
+  is_sold: boolean;
+};
+
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'default', autoOpen = false }) => {
   const isIncome = type === 'income';
   const table = isIncome ? 'revenues' : 'expenses';
@@ -111,7 +148,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
   const [cardFees, setCardFees] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [procedures, setProcedures] = useState<any[]>([]);
-  const [selectedProcedures, setSelectedProcedures] = useState<{ id: string; quantidade: number }[]>([]);
+  const [selectedProcedures, setSelectedProcedures] = useState<SelectedProcedure[]>([]);
   const [procedureToAdd, setProcedureToAdd] = useState('');
   const [procedureQtyToAdd, setProcedureQtyToAdd] = useState('1');
   const [professionals, setProfessionals] = useState<any[]>([]);
@@ -150,6 +187,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
   });
+  const [salesTab, setSalesTab] = useState<'sold' | 'quoted'>('sold');
+  const [salesDatePreset, setSalesDatePreset] = useState<'day' | 'week' | 'month' | 'quarter'>('month');
+  const [salesBaseDate, setSalesBaseDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [quotedCategory, setQuotedCategory] = useState('');
+  const [quotedProcedure, setQuotedProcedure] = useState('');
 
   // UI
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -164,6 +206,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
   const [paymentItem, setPaymentItem] = useState<any | null>(null);
   const [paymentDate, setPaymentDate] = useState('');
   const [dueDateDirty, setDueDateDirty] = useState(false);
+  const [saleNumberOverride, setSaleNumberOverride] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isIncome || !isSalesView || salesTab !== 'sold') return;
+    const range = getSalesRange(salesDatePreset, salesBaseDate);
+    setDateStart(range.start);
+    setDateEnd(range.end);
+  }, [isIncome, isSalesView, salesTab, salesDatePreset, salesBaseDate]);
 
   const getReturnTarget = React.useCallback(() => {
     if (!isIncome) return null;
@@ -309,7 +359,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
             *,
             categories (name, cor_opcional),
             bank_accounts (nome_conta),
-            revenue_procedures (procedimento, categoria, quantidade, valor_cobrado, procedure_id)
+            revenue_procedures (procedimento, categoria, quantidade, valor_cobrado, procedure_id, is_sold)
           `)
           .order('data_competencia', { ascending: false });
       } else {
@@ -398,6 +448,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     if (!isIncome) return;
     if (!selectedProcedures.length) return;
     const total = selectedProcedures.reduce((sum, sel) => {
+      if (sel.is_sold === false) return sum;
       const proc = procedures.find(p => p.id === sel.id);
       const valor = proc?.valor_cobrado ? Number(proc.valor_cobrado) : 0;
       return sum + valor * (sel.quantidade || 1);
@@ -798,8 +849,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
       if (formData.observations) extraObservations.push(formData.observations);
 
       // Base payload
+      const baseProcedure = isIncome
+        ? (selectedProcedures.find(p => p.is_sold !== false) || selectedProcedures[0])
+        : null;
       const descriptionValue = isIncome
-        ? (formData.entity_name || (selectedProcedures[0] ? procedures.find(p => p.id === selectedProcedures[0].id)?.procedimento : '') || 'Receita')
+        ? (formData.entity_name || (baseProcedure ? procedures.find(p => p.id === baseProcedure.id)?.procedimento : '') || 'Receita')
         : (formData.description || 'Despesa');
 
       const payload: any = {
@@ -843,6 +897,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
         }
         payload.sale_professional_id = formProfessionals.venda || null;
         payload.exec_professional_id = formProfessionals.execucao || null;
+        if (!editingId && saleNumberOverride) {
+          payload.sale_number = saleNumberOverride;
+        }
       } else {
         payload.valor = grossAmount; // Para despesa usamos o valor direto
         const expenseDueDate = formData.due_date || formData.date;
@@ -932,6 +989,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
             procedimento: proc?.procedimento || null,
             valor_cobrado: proc?.valor_cobrado || null,
             quantidade: sel.quantidade || 1,
+            is_sold: sel.is_sold !== false,
           };
         });
         if (rows.length) {
@@ -966,19 +1024,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
         const shouldAffect = shouldAffectBalance(formData.status, isIncome ? 'income' : 'expense');
         if (shouldAffect) {
           let delta = isIncome ? amountToUpdate : -amountToUpdate;
-          if (!isIncome && formData.is_recurring) {
-            const reps = Math.max(1, parseInt(formData.recurrence_count || '1', 10));
-            delta = delta * reps;
-          }
-          await updateAccountBalance(formData.bank_account_id, delta);
-        }
-      }
+    if (!isIncome && formData.is_recurring) {
+      const reps = Math.max(1, parseInt(formData.recurrence_count || '1', 10));
+      delta = delta * reps;
+    }
+    await updateAccountBalance(formData.bank_account_id, delta);
+  }
+}
 
       const returnTarget = getReturnTarget();
       if (!returnTarget) {
         fetchData();
       }
       closeEntryModal({ returnTarget });
+      setSaleNumberOverride(null);
 
     } catch (error: any) {
       alert('Erro ao salvar: ' + error.message);
@@ -1058,7 +1117,22 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     setDueDateDirty(!isIncome && initialDueDate !== initialDate);
     setManualParcelas(manual);
     setManualParcelasDirty(manual.length > 0);
-    setSelectedProcedures([]); // poderia buscar vínculo se necessário
+    const linkedProcedures = Array.isArray(item?.revenue_procedures)
+      ? (item.revenue_procedures as any[])
+        .map((rp) => {
+          const fallback = procedures.find((p) => p.procedimento === rp.procedimento);
+          const resolvedId = rp.procedure_id || fallback?.id;
+          if (!resolvedId) return null;
+          return {
+            id: resolvedId,
+            quantidade: rp.quantidade || 1,
+            is_sold: rp.is_sold !== false,
+          };
+        })
+        .filter(Boolean)
+      : [];
+    setSelectedProcedures(linkedProcedures as SelectedProcedure[]);
+    setSaleNumberOverride(null);
     setFormProfessionals({ venda: '', execucao: '' });
     setSupplierId(item.supplier_id || '');
     setIsModalOpen(true);
@@ -1073,6 +1147,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
 
     if (!matchesText) return false;
 
+    if (isIncome && isSalesView && salesTab === 'sold') {
+      const list = (item.revenue_procedures || []) as any[];
+      if (list.length && !list.some(p => p.is_sold !== false)) return false;
+    }
+
     if (!isIncome) {
       if (expenseFilters.tipoDespesa && (item.tipo_despesa || '') !== expenseFilters.tipoDespesa) return false;
       if (expenseFilters.pessoaTipo && (item.pessoa_tipo || '') !== expenseFilters.pessoaTipo) return false;
@@ -1080,6 +1159,93 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     }
     return true;
   });
+
+  const procedureCategories = useMemo(() => {
+    const unique = new Set<string>();
+    procedures.forEach((proc: any) => {
+      if (proc?.categoria) unique.add(proc.categoria);
+    });
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [procedures]);
+
+  const quotedItems = useMemo(() => {
+    if (!isIncome) return [] as any[];
+    const items: any[] = [];
+    transactions.forEach((rev: any) => {
+      const list = (rev.revenue_procedures || []) as any[];
+      list.forEach((proc) => {
+        if (proc?.is_sold !== false) return;
+        const quantidade = Number(proc?.quantidade || 0) || 1;
+        const valor = Number(proc?.valor_cobrado || 0) || 0;
+        items.push({
+          id: `${rev.id || 'rev'}-${proc.procedure_id || proc.procedimento || Math.random()}`,
+          revenue_id: rev.id,
+          paciente: rev.paciente || rev.description || 'Sem nome',
+          data_competencia: rev.data_competencia,
+          procedimento: proc.procedimento || 'Procedimento',
+          categoria: proc.categoria || '',
+          quantidade,
+          valor_cobrado: valor,
+          total: valor * quantidade,
+          procedure_id: proc.procedure_id || '',
+        });
+      });
+    });
+    return items;
+  }, [transactions, isIncome]);
+
+  const quotedFilteredItems = useMemo(() => {
+    return quotedItems.filter((item) => {
+      if (quotedCategory && item.categoria !== quotedCategory) return false;
+      if (quotedProcedure && item.procedure_id !== quotedProcedure) return false;
+      if (dateStart && item.data_competencia && item.data_competencia < dateStart) return false;
+      if (dateEnd && item.data_competencia && item.data_competencia > dateEnd) return false;
+      return true;
+    });
+  }, [quotedItems, quotedCategory, quotedProcedure, dateStart, dateEnd]);
+
+  const soldProcedureItems = useMemo(() => {
+    if (!isIncome) return [] as any[];
+    const items: any[] = [];
+    transactions.forEach((rev: any) => {
+      const list = (rev.revenue_procedures || []) as any[];
+      list.forEach((proc) => {
+        if (proc?.is_sold === false) return;
+        const quantidade = Number(proc?.quantidade || 0) || 1;
+        const valor = Number(proc?.valor_cobrado || 0) || 0;
+        items.push({
+          revenue_id: rev.id,
+          paciente: rev.paciente || rev.description || 'Sem nome',
+          data_competencia: rev.data_competencia,
+          procedimento: proc.procedimento || 'Procedimento',
+          categoria: proc.categoria || '',
+          quantidade,
+          valor_cobrado: valor,
+          total: valor * quantidade,
+          procedure_id: proc.procedure_id || '',
+        });
+      });
+    });
+    return items;
+  }, [transactions, isIncome]);
+
+  const soldFilteredItems = useMemo(() => {
+    return soldProcedureItems.filter((item) => {
+      if (quotedCategory && item.categoria !== quotedCategory) return false;
+      if (quotedProcedure && item.procedure_id !== quotedProcedure) return false;
+      if (dateStart && item.data_competencia && item.data_competencia < dateStart) return false;
+      if (dateEnd && item.data_competencia && item.data_competencia > dateEnd) return false;
+      return true;
+    });
+  }, [soldProcedureItems, quotedCategory, quotedProcedure, dateStart, dateEnd]);
+
+  const quotedMetrics = useMemo(() => {
+    const totalOportunidades = quotedFilteredItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
+    const clientesOportunidade = new Set(quotedFilteredItems.map((item) => item.paciente)).size;
+    const totalVendido = soldFilteredItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
+    const percentualPerdido = totalVendido ? (totalOportunidades / totalVendido) * 100 : 0;
+    return { totalOportunidades, clientesOportunidade, totalVendido, percentualPerdido };
+  }, [quotedFilteredItems, soldFilteredItems]);
 
   const sortedData = [...filteredData].sort((a, b) => {
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -1111,11 +1277,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
-  }, [sortKey, sortDir, searchTerm, expenseFilters, dateStart, dateEnd, expenseDateField, type]);
+  }, [sortKey, sortDir, searchTerm, expenseFilters, dateStart, dateEnd, expenseDateField, type, salesTab, quotedCategory, quotedProcedure]);
 
   const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
   const pageData = sortedData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const allFilteredIds = sortedData.map((item) => item.id);
+  const quotedTotalPages = Math.max(1, Math.ceil(quotedFilteredItems.length / pageSize));
+  const quotedPageData = quotedFilteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const allFilteredSelected =
     allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id));
 
@@ -1127,13 +1295,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
       if (exists) {
         return prev.map(p => p.id === procedureToAdd ? { ...p, quantidade: p.quantidade + qty } : p);
       }
-      return [...prev, { id: procedureToAdd, quantidade: qty }];
+      return [...prev, { id: procedureToAdd, quantidade: qty, is_sold: true }];
     });
     setProcedureToAdd('');
     setProcedureQtyToAdd('1');
   };
 
   const totalProcedures = selectedProcedures.reduce((sum, sel) => {
+    if (sel.is_sold === false) return sum;
+    const proc = procedures.find(p => p.id === sel.id);
+    const valor = proc?.valor_cobrado ? Number(proc.valor_cobrado) : 0;
+    return sum + valor * (sel.quantidade || 1);
+  }, 0);
+
+  const totalQuotedProcedures = selectedProcedures.reduce((sum, sel) => {
+    if (sel.is_sold !== false) return sum;
     const proc = procedures.find(p => p.id === sel.id);
     const valor = proc?.valor_cobrado ? Number(proc.valor_cobrado) : 0;
     return sum + valor * (sel.quantidade || 1);
@@ -1152,7 +1328,46 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     return str;
   };
 
+  const buildSpreadsheetXml = (sheetName: string, rows: Array<Array<{ type: 'String' | 'Number'; value: string | number }>>) => {
+    const escapeXml = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    const xmlRows = rows
+      .map((row) => {
+        const cells = row
+          .map((cell) => {
+            const value = cell.type === 'Number' ? cell.value : escapeXml(String(cell.value));
+            return `<Cell><Data ss:Type="${cell.type}">${value}</Data></Cell>`;
+          })
+          .join('');
+        return `<Row>${cells}</Row>`;
+      })
+      .join('');
+    return `<?xml version="1.0"?>\n` +
+      `<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">` +
+      `<Worksheet ss:Name="${escapeXml(sheetName)}"><Table>${xmlRows}</Table></Worksheet>` +
+      `</Workbook>`;
+  };
+
+  const downloadSpreadsheet = (filename: string, sheetName: string, rows: Array<Array<{ type: 'String' | 'Number'; value: string | number }>>) => {
+    const xml = buildSpreadsheetXml(sheetName, rows);
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const exportTable = (format: 'csv' | 'pdf') => {
+    const incomeLabel = isSalesView ? 'vendas' : 'receitas';
+    const incomeTitle = isSalesView ? 'Vendas' : 'Receitas';
     const headers = isIncome
       ? ['Descrição', 'Paciente', 'Data', 'Categoria', 'Forma pag.', 'Valor faturado']
       : ['Descrição', 'Fornecedor', 'Data', 'Vencimento', 'Categoria', 'Status', 'Valor'];
@@ -1189,7 +1404,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${isIncome ? 'receitas' : 'despesas'}-filtrado.csv`);
+      link.setAttribute('download', `${isIncome ? incomeLabel : 'despesas'}-filtrado.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1203,10 +1418,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
       const win = window.open('', '_blank');
       if (!win) return;
       win.document.write(`
-        <html><head><title>${isIncome ? 'Receitas' : 'Despesas'}</title>
+        <html><head><title>${isIncome ? incomeTitle : 'Despesas'}</title>
         <style>table{border-collapse:collapse;width:100%;font-family:Arial;}th,td{border:1px solid #ddd;padding:6px;font-size:12px;}th{background:#f3f4f6;text-align:left;}</style>
         </head><body>
-        <h3>${isIncome ? 'Receitas' : 'Despesas'} (filtrado)</h3>
+        <h3>${isIncome ? incomeTitle : 'Despesas'} (filtrado)</h3>
         <table>
           <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
           <tbody>${htmlRows}</tbody>
@@ -1216,6 +1431,47 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
       win.document.close();
       win.print();
     }
+  };
+
+  const exportQuoted = (format: 'excel' | 'pdf') => {
+    const headers = ['Cliente', 'Procedimento', 'Categoria', 'Qtd.', 'Valor', 'Total', 'Data'];
+    const rows = quotedFilteredItems.map(item => [
+      item.paciente || '-',
+      item.procedimento || '-',
+      item.categoria || '-',
+      String(item.quantidade || 0),
+      formatCurrency(item.valor_cobrado || 0),
+      formatCurrency(item.total || 0),
+      formatDate(item.data_competencia),
+    ]);
+
+    if (format === 'excel') {
+      const xmlRows = [
+        headers.map(h => ({ type: 'String' as const, value: h })),
+        ...rows.map(r => r.map(value => ({ type: 'String' as const, value }))),
+      ];
+      downloadSpreadsheet('orcados.xls', 'Orcados', xmlRows);
+      return;
+    }
+
+    const htmlRows = rows
+      .map(r => `<tr>${r.map(c => `<td style="padding:6px;border:1px solid #ddd;font-size:12px;">${c}</td>`).join('')}</tr>`)
+      .join('');
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>Orçados</title>
+      <style>table{border-collapse:collapse;width:100%;font-family:Arial;}th,td{border:1px solid #ddd;padding:6px;font-size:12px;}th{background:#f3f4f6;text-align:left;}</style>
+      </head><body>
+      <h3>Orçados (filtrado)</h3>
+      <table>
+        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${htmlRows}</tbody>
+      </table>
+      </body></html>
+    `);
+    win.document.close();
+    win.print();
   };
 
   const toggleSelect = (id: string) => {
@@ -1330,7 +1586,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     const procedimentosRealizados = data.reduce((s, r) => {
       const list = (r.revenue_procedures || []) as any[];
       if (!list.length) return s;
-      return s + list.reduce((acc, p) => acc + (p.quantidade || 0), 0);
+      const sold = list.filter(p => p.is_sold !== false);
+      if (!sold.length) return s;
+      return s + sold.reduce((acc, p) => acc + (p.quantidade || 0), 0);
     }, 0);
 
     const clientesAtendidos = pacientes.length;
@@ -1383,6 +1641,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     setSupplierId('');
     setManualParcelas([]);
     setManualParcelasDirty(false);
+    setSaleNumberOverride(null);
   };
 
   const openNewModal = React.useCallback(() => {
@@ -1401,6 +1660,78 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
     const nextSearch = params.toString();
     navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`, { replace: true });
   }, [isIncome, location.pathname, location.search, navigate, openNewModal]);
+
+  const openFinalizeFromQuote = React.useCallback((revenueId: string) => {
+    const item = transactions.find((t) => t.id === revenueId);
+    if (!item) {
+      alert('Registro de orçamento não encontrado.');
+      return;
+    }
+    handleEdit(item);
+    setEditingId(null);
+    setEditingItem(null);
+    const quotedOnly = Array.isArray(item?.revenue_procedures)
+      ? (item.revenue_procedures as any[])
+        .filter((rp) => rp.is_sold === false)
+        .map((rp) => {
+          const fallback = procedures.find((p: any) => p.procedimento === rp.procedimento);
+          const resolvedId = rp.procedure_id || fallback?.id;
+          if (!resolvedId) return null;
+          return {
+            id: resolvedId,
+            quantidade: rp.quantidade || 1,
+            is_sold: true,
+          };
+        })
+        .filter(Boolean)
+      : [];
+    setSelectedProcedures(quotedOnly as SelectedProcedure[]);
+    if (item.sale_number) {
+      setSaleNumberOverride(`O${item.sale_number}`);
+    } else {
+      setSaleNumberOverride(null);
+    }
+    setFormData((prev) => ({
+      ...prev,
+      payment_method: 'PIX',
+      tax_rate: PAYMENT_FEE_DEFAULTS.PIX,
+      tax_amount: '0',
+      liquid_amount: '',
+      installments: '1',
+      nsu: '',
+      boleto_due_date: '',
+      cheque_number: '',
+      cheque_bank: '',
+      cheque_due_date: '',
+      cheque_pages: '1',
+      cheque_value: '',
+      card_brand: '',
+    }));
+    setManualParcelas([]);
+    setManualParcelasDirty(false);
+    setDueDateDirty(false);
+  }, [transactions, handleEdit, procedures]);
+
+  const startFinalizeFromQuote = (revenueId: string) => {
+    if (!revenueId) {
+      alert('Registro de orçamento não encontrado.');
+      return;
+    }
+    const params = new URLSearchParams(location.search);
+    params.set('finalize', revenueId);
+    navigate(`${location.pathname}?${params.toString()}`, { replace: false });
+  };
+
+  useEffect(() => {
+    if (!isIncome || !isSalesView) return;
+    const params = new URLSearchParams(location.search);
+    const finalizeId = params.get('finalize');
+    if (!finalizeId || loading) return;
+    openFinalizeFromQuote(finalizeId);
+    params.delete('finalize');
+    const nextSearch = params.toString();
+    navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`, { replace: true });
+  }, [isIncome, isSalesView, location.pathname, location.search, navigate, openFinalizeFromQuote, loading]);
 
   useEffect(() => {
     if (!autoOpen || autoOpenRef.current) return;
@@ -1432,97 +1763,240 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
         )}
       </div>
 
+      {isIncome && isSalesView && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSalesTab('sold')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              salesTab === 'sold'
+                ? 'bg-brand-600 text-white border-brand-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            VENDIDO
+          </button>
+          <button
+            type="button"
+            onClick={() => setSalesTab('quoted')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              salesTab === 'quoted'
+                ? 'bg-brand-600 text-white border-brand-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            ORÇADO
+          </button>
+        </div>
+      )}
+
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
-        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder={isIncome ? "Buscar por descrição ou paciente..." : "Buscar por descrição ou fornecedor..."}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      {isIncome && isSalesView ? (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
+          {salesTab === 'sold' ? (
+            <>
+              <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Buscar clientes..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={salesDatePreset}
+                    onChange={(e) => setSalesDatePreset(e.target.value as 'day' | 'week' | 'month' | 'quarter')}
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[160px] w-full sm:w-auto"
+                  >
+                    <option value="day">Dia</option>
+                    <option value="week">Semana</option>
+                    <option value="month">Mês</option>
+                    <option value="quarter">Trimestre</option>
+                  </select>
+                  <div className="relative min-w-[160px] flex-1 sm:flex-none">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Calendar size={16} /></span>
+                    <input
+                      type="date"
+                      value={salesBaseDate}
+                      onChange={e => setSalesBaseDate(e.target.value)}
+                      className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm text-gray-600"
+                    />
+                  </div>
+                  <button onClick={fetchData} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                    <Filter size={20} />
+                    Filtrar
+                  </button>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">
+                Período: {formatDate(dateStart)} até {formatDate(dateEnd)}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+                <div className="min-w-[180px] flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Categoria</label>
+                  <select
+                    value={quotedCategory}
+                    onChange={(e) => setQuotedCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                  >
+                    <option value="">Todas</option>
+                    {procedureCategories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="min-w-[200px] flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Procedimento</label>
+                  <select
+                    value={quotedProcedure}
+                    onChange={(e) => setQuotedProcedure(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                  >
+                    <option value="">Todos</option>
+                    {procedures.map((proc: any) => (
+                      <option key={proc.id} value={proc.id}>{proc.procedimento}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative min-w-[160px] flex-1 sm:flex-none">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">De</label>
+                  <span className="absolute left-3 top-[34px] text-gray-400"><Calendar size={16} /></span>
+                  <input
+                    type="date"
+                    value={dateStart}
+                    onChange={e => setDateStart(e.target.value)}
+                    className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm text-gray-600"
+                  />
+                </div>
+                <div className="relative min-w-[160px] flex-1 sm:flex-none">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Até</label>
+                  <span className="absolute left-3 top-[34px] text-gray-400"><Calendar size={16} /></span>
+                  <input
+                    type="date"
+                    value={dateEnd}
+                    onChange={e => setDateEnd(e.target.value)}
+                    className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm text-gray-600"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  onClick={() => exportQuoted('excel')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <Download size={16} />
+                  Baixar Excel
+                </button>
+                <button
+                  onClick={() => exportQuoted('pdf')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <Download size={16} />
+                  Baixar PDF
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
+          <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder={isIncome ? "Buscar por descrição ou paciente..." : "Buscar por descrição ou fornecedor..."}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[160px] flex-1 sm:flex-none">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Calendar size={16} /></span>
+                <input
+                  type="date"
+                  value={dateStart}
+                  onChange={e => setDateStart(e.target.value)}
+                  className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm text-gray-600"
+                />
+              </div>
+              <span className="text-gray-400">até</span>
+              <div className="relative min-w-[160px] flex-1 sm:flex-none">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Calendar size={16} /></span>
+                <input
+                  type="date"
+                  value={dateEnd}
+                  onChange={e => setDateEnd(e.target.value)}
+                  className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm text-gray-600"
+                />
+              </div>
+              {!isIncome && (
+                <select
+                  value={expenseDateField}
+                  onChange={(e) => setExpenseDateField(e.target.value as 'competencia' | 'vencimento')}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
+                >
+                  <option value="competencia">Data de competência</option>
+                  <option value="vencimento">Data de vencimento</option>
+                </select>
+              )}
+              {isIncome && (
+                <button onClick={fetchData} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Filter size={20} />
+                  Filtrar
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[160px] flex-1 sm:flex-none">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Calendar size={16} /></span>
-              <input
-                type="date"
-                value={dateStart}
-                onChange={e => setDateStart(e.target.value)}
-                className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm text-gray-600"
-              />
-            </div>
-            <span className="text-gray-400">até</span>
-            <div className="relative min-w-[160px] flex-1 sm:flex-none">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Calendar size={16} /></span>
-              <input
-                type="date"
-                value={dateEnd}
-                onChange={e => setDateEnd(e.target.value)}
-                className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm text-gray-600"
-              />
-            </div>
-            {!isIncome && (
+          {!isIncome && (
+            <div className="flex flex-wrap items-center gap-2">
               <select
-                value={expenseDateField}
-                onChange={(e) => setExpenseDateField(e.target.value as 'competencia' | 'vencimento')}
+                value={expenseFilters.tipoDespesa}
+                onChange={e => setExpenseFilters(prev => ({ ...prev, tipoDespesa: e.target.value }))}
                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
               >
-                <option value="competencia">Data de competência</option>
-                <option value="vencimento">Data de vencimento</option>
+                <option value="">Tipo (fixo/variável)</option>
+                <option value="fixo">Fixo</option>
+                <option value="variavel">Variável</option>
               </select>
-            )}
-            {isIncome && (
+              <select
+                value={expenseFilters.pessoaTipo}
+                onChange={e => setExpenseFilters(prev => ({ ...prev, pessoaTipo: e.target.value }))}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
+              >
+                <option value="">Pessoa (F/J)</option>
+                <option value="fisica">Pessoa Física</option>
+                <option value="juridica">Pessoa Jurídica</option>
+              </select>
+              <select
+                value={expenseFilters.status}
+                onChange={e => setExpenseFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[140px] w-full sm:w-auto"
+              >
+                <option value="">Status</option>
+                <option value="paid">Pago</option>
+                <option value="pending">À pagar</option>
+              </select>
               <button onClick={fetchData} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
                 <Filter size={20} />
                 Filtrar
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+      )}
 
-        {!isIncome && (
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={expenseFilters.tipoDespesa}
-              onChange={e => setExpenseFilters(prev => ({ ...prev, tipoDespesa: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
-            >
-              <option value="">Tipo (fixo/variável)</option>
-              <option value="fixo">Fixo</option>
-              <option value="variavel">Variável</option>
-            </select>
-            <select
-              value={expenseFilters.pessoaTipo}
-              onChange={e => setExpenseFilters(prev => ({ ...prev, pessoaTipo: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
-            >
-              <option value="">Pessoa (F/J)</option>
-              <option value="fisica">Pessoa Física</option>
-              <option value="juridica">Pessoa Jurídica</option>
-            </select>
-            <select
-              value={expenseFilters.status}
-              onChange={e => setExpenseFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[140px] w-full sm:w-auto"
-            >
-              <option value="">Status</option>
-              <option value="paid">Pago</option>
-              <option value="pending">À pagar</option>
-            </select>
-            <button onClick={fetchData} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
-              <Filter size={20} />
-              Filtrar
-            </button>
-          </div>
-        )}
-      </div>
-
-      {isIncome && metrics && (
+      {isIncome && metrics && !isSalesView && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
             <p className="text-xs uppercase text-gray-500">Total Receita Faturada</p>
@@ -1563,6 +2037,45 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
         </div>
       )}
 
+      {isIncome && isSalesView && salesTab === 'sold' && metrics && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <p className="text-xs uppercase text-gray-500">Ticket médio</p>
+            <p className="text-xl font-bold text-gray-800">{formatCurrency(metrics.ticketMedio)}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <p className="text-xs uppercase text-gray-500">Procedimentos realizados</p>
+            <p className="text-xl font-bold text-gray-800">{metrics.procedimentosRealizados}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <p className="text-xs uppercase text-gray-500">Clientes atendidos</p>
+            <p className="text-xl font-bold text-gray-800">{metrics.clientesAtendidos}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <p className="text-xs uppercase text-gray-500">Recorrência</p>
+            <p className="text-xl font-bold text-gray-800">{metrics.recorrenciaPercent.toFixed(1)}%</p>
+            <p className="text-xs text-gray-500">Novos: {metrics.novosClientes}</p>
+          </div>
+        </div>
+      )}
+
+      {isIncome && isSalesView && salesTab === 'quoted' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <p className="text-xs uppercase text-gray-500">Total Oportunidades</p>
+            <p className="text-xl font-bold text-gray-800">{formatCurrency(quotedMetrics.totalOportunidades)}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <p className="text-xs uppercase text-gray-500">Clientes oportunidade</p>
+            <p className="text-xl font-bold text-gray-800">{quotedMetrics.clientesOportunidade}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <p className="text-xs uppercase text-gray-500">Percentual perdido</p>
+            <p className="text-xl font-bold text-gray-800">{quotedMetrics.percentualPerdido.toFixed(1)}%</p>
+          </div>
+        </div>
+      )}
+
       {!isIncome && expenseMetrics && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
@@ -1584,6 +2097,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
         </div>
       )}
 
+      {(!isSalesView || !isIncome || salesTab === 'sold') && (
+      <>
       {/* Paginação e page size */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-2">
         <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -1841,6 +2356,100 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {isIncome && isSalesView && salesTab === 'quoted' && (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span>Linhas por página:</span>
+              <select
+                value={pageSize}
+                onChange={e => { setPageSize(parseInt(e.target.value, 10)); setCurrentPage(1); }}
+                className="border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+              >
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-xs text-gray-500">Total: {quotedFilteredItems.length}</span>
+            </div>
+            <div className="flex items-center gap-1 text-sm justify-end">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2 py-1 border border-gray-300 rounded disabled:opacity-50"
+              >
+                ‹
+              </button>
+              <span className="px-2">Página {currentPage} / {quotedTotalPages}</span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(quotedTotalPages, p + 1))}
+                disabled={currentPage === quotedTotalPages}
+                className="px-2 py-1 border border-gray-300 rounded disabled:opacity-50"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-h-[300px]">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                <Loader2 size={32} className="animate-spin mb-2" />
+                <p>Carregando dados...</p>
+              </div>
+            ) : (
+              <div className="table-scroll">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 font-medium">
+                    <tr>
+                      <th className="px-6 py-4">Cliente</th>
+                      <th className="px-6 py-4">Procedimento</th>
+                      <th className="px-6 py-4">Categoria</th>
+                      <th className="px-6 py-4 text-right">Qtd.</th>
+                      <th className="px-6 py-4 text-right">Valor</th>
+                      <th className="px-6 py-4 text-right">Total</th>
+                      <th className="px-6 py-4">Data</th>
+                      <th className="px-6 py-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {quotedPageData.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-gray-700">{item.paciente}</td>
+                        <td className="px-6 py-4 text-gray-700">{item.procedimento}</td>
+                        <td className="px-6 py-4 text-gray-600">{item.categoria || '-'}</td>
+                        <td className="px-6 py-4 text-right text-gray-600">{item.quantidade}</td>
+                        <td className="px-6 py-4 text-right text-gray-700">{formatCurrency(item.valor_cobrado)}</td>
+                        <td className="px-6 py-4 text-right font-medium text-gray-800">{formatCurrency(item.total)}</td>
+                        <td className="px-6 py-4 text-gray-600">{formatDate(item.data_competencia)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => startFinalizeFromQuote(item.revenue_id)}
+                            className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+                          >
+                            Finalizar venda
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {quotedPageData.length === 0 && (
+                      <tr>
+                        <td className="px-6 py-6 text-center text-gray-400" colSpan={8}>
+                          Nenhum orçamento encontrado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {deleteTarget && (
         <div
@@ -2042,6 +2651,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
                               <th className="px-3 py-2 text-left">Qtd.</th>
                               <th className="px-3 py-2 text-left">Valor</th>
                               <th className="px-3 py-2 text-left">Subtotal</th>
+                              <th className="px-3 py-2 text-left">Status</th>
                               <th className="px-3 py-2"></th>
                             </tr>
                           </thead>
@@ -2049,6 +2659,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
                             {selectedProcedures.map(sel => {
                               const proc = procedures.find((p: any) => p.id === sel.id);
                               const valor = proc?.valor_cobrado ? Number(proc.valor_cobrado) : 0;
+                              const isSold = sel.is_sold !== false;
                               return (
                                 <tr key={sel.id}>
                                   <td className="px-3 py-2 text-gray-800">{proc?.procedimento || '-'}</td>
@@ -2067,7 +2678,19 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
                                   </td>
                                   <td className="px-3 py-2 text-gray-700">{formatCurrency(valor)}</td>
                                   <td className="px-3 py-2 text-gray-800 font-semibold">{formatCurrency(valor * (sel.quantidade || 1))}</td>
+                                  <td className="px-3 py-2">
+                                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isSold ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                      {isSold ? 'Vendido' : 'Orçado'}
+                                    </span>
+                                  </td>
                                   <td className="px-3 py-2 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedProcedures(prev => prev.map(p => p.id === sel.id ? { ...p, is_sold: p.is_sold === false ? true : false } : p))}
+                                      className="text-xs text-gray-700 mr-3 hover:text-gray-900"
+                                    >
+                                      {isSold ? 'Marcar como orçado' : 'Marcar como vendido'}
+                                    </button>
                                     <button
                                       type="button"
                                       onClick={() => setSelectedProcedures(prev => prev.filter(p => p.id !== sel.id))}
@@ -2081,8 +2704,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
                             })}
                           </tbody>
                         </table>
-                        <div className="px-3 py-2 text-right text-sm font-semibold text-gray-800 bg-gray-50">
-                          Subtotal procedimentos: {formatCurrency(totalProcedures)}
+                        <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <span>Subtotal vendido: {formatCurrency(totalProcedures)}</span>
+                          {totalQuotedProcedures > 0 && <span className="text-amber-700">Orçado: {formatCurrency(totalQuotedProcedures)}</span>}
                         </div>
                       </div>
                     )}
