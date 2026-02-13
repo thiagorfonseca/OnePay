@@ -158,58 +158,60 @@ export default async function handler(req: any, res: any) {
         .limit(1)
         .maybeSingle();
 
-      const storedSigner = doc?.raw?.signers?.[0];
-      const storedToken = storedSigner?.signer_token || storedSigner?.token;
-      signatureUrl =
-        storedSigner?.sign_url ||
-        storedSigner?.url ||
-        (storedToken ? `https://app.zapsign.com.br/verificar/${storedToken}` : null) ||
-        doc?.raw?.signer_url ||
-        doc?.raw?.url ||
-        null;
+      if (doc) {
+        const storedSigner = doc.raw?.signers?.[0];
+        const storedToken = storedSigner?.signer_token || storedSigner?.token;
+        signatureUrl =
+          storedSigner?.sign_url ||
+          storedSigner?.url ||
+          (storedToken ? `https://app.zapsign.com.br/verificar/${storedToken}` : null) ||
+          doc.raw?.signer_url ||
+          doc.raw?.url ||
+          null;
 
-      const docToken =
-        doc?.zapsign_doc_id ||
-        doc?.raw?.token ||
-        doc?.raw?.doc_id ||
-        doc?.raw?.id ||
-        doc?.raw?.docId ||
-        null;
-      if (docToken && ZAPSIGN_API_TOKEN) {
-        try {
-          if (!doc?.zapsign_doc_id && docToken) {
-            await supabaseAdmin.from('od_zapsign_documents').update({ zapsign_doc_id: docToken }).eq('id', doc.id);
+        const docToken =
+          doc.zapsign_doc_id ||
+          doc.raw?.token ||
+          doc.raw?.doc_id ||
+          doc.raw?.id ||
+          doc.raw?.docId ||
+          null;
+        if (docToken && ZAPSIGN_API_TOKEN) {
+          try {
+            if (!doc.zapsign_doc_id) {
+              await supabaseAdmin.from('od_zapsign_documents').update({ zapsign_doc_id: docToken }).eq('id', doc.id);
+            }
+            const fresh = await getDocument(ZAPSIGN_API_TOKEN, docToken);
+            const freshSigner = fresh?.signers?.[0];
+            const freshToken = freshSigner?.signer_token || freshSigner?.token;
+            signatureUrl =
+              freshSigner?.sign_url ||
+              freshSigner?.url ||
+              (freshToken ? `https://app.zapsign.com.br/verificar/${freshToken}` : null) ||
+              fresh?.signer_url ||
+              fresh?.url ||
+              signatureUrl;
+            const allSigned =
+              isSignedStatus(fresh?.status) ||
+              (Array.isArray(fresh?.signers) && fresh.signers.length > 0
+                ? fresh.signers.every((signer: any) => isSignedStatus(signer?.status))
+                : false);
+            if (signatureUrl) {
+              await supabaseAdmin
+                .from('od_zapsign_documents')
+                .update({ raw: fresh })
+                .eq('id', doc.id);
+            }
+            if (allSigned) {
+              await supabaseAdmin
+                .from('od_zapsign_documents')
+                .update({ status: 'signed', signed_at: new Date().toISOString(), raw: fresh })
+                .eq('id', doc.id);
+              await supabaseAdmin.from('od_proposals').update({ status: 'signed' }).eq('id', proposal.id);
+            }
+          } catch (err) {
+            console.error(err);
           }
-          const fresh = await getDocument(ZAPSIGN_API_TOKEN, docToken);
-          const freshSigner = fresh?.signers?.[0];
-          const freshToken = freshSigner?.signer_token || freshSigner?.token;
-          signatureUrl =
-            freshSigner?.sign_url ||
-            freshSigner?.url ||
-            (freshToken ? `https://app.zapsign.com.br/verificar/${freshToken}` : null) ||
-            fresh?.signer_url ||
-            fresh?.url ||
-            signatureUrl;
-          const allSigned =
-            isSignedStatus(fresh?.status) ||
-            (Array.isArray(fresh?.signers) && fresh.signers.length > 0
-              ? fresh.signers.every((signer: any) => isSignedStatus(signer?.status))
-              : false);
-          if (signatureUrl) {
-            await supabaseAdmin
-              .from('od_zapsign_documents')
-              .update({ raw: fresh })
-              .eq('id', doc.id);
-          }
-          if (allSigned) {
-            await supabaseAdmin
-              .from('od_zapsign_documents')
-              .update({ status: 'signed', signed_at: new Date().toISOString(), raw: fresh })
-              .eq('id', doc.id);
-            await supabaseAdmin.from('od_proposals').update({ status: 'signed' }).eq('id', proposal.id);
-          }
-        } catch (err) {
-          console.error(err);
         }
       }
     }
