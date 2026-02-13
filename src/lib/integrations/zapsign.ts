@@ -30,9 +30,10 @@ const request = async (path: string, token: string, options: RequestInit = {}) =
     },
   });
 
-  const data = await res.json().catch(() => ({}));
+  const rawText = await res.text();
+  const data = rawText ? (() => { try { return JSON.parse(rawText); } catch { return {}; } })() : {};
   if (!res.ok) {
-    const message = data?.message || 'Erro ao comunicar com ZapSign';
+    const message = data?.message || data?.detail || data?.error || 'Erro ao comunicar com ZapSign';
     throw new Error(message);
   }
   return data;

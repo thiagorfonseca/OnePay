@@ -260,7 +260,11 @@ const PublicProposalForm: React.FC = () => {
       if (data?.details?.fieldErrors) {
         setError('Preencha todos os campos obrigatórios antes de continuar.');
       } else {
-        setError(data?.error || 'Erro ao enviar formulário.');
+        if (typeof data?.details === 'string' && data.details.length) {
+          setError(data.details);
+        } else {
+          setError(data?.error || 'Erro ao enviar formulário.');
+        }
       }
       return;
     }
