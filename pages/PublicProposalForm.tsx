@@ -44,6 +44,7 @@ const PublicProposalForm: React.FC = () => {
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState('');
   const [lastCep, setLastCep] = useState('');
+  const [restored, setRestored] = useState(false);
 
   const trimValue = (value: string) => value.trim();
   const digitsOnly = (value: string) => value.replace(/\D/g, '');
@@ -125,6 +126,43 @@ const PublicProposalForm: React.FC = () => {
   useEffect(() => {
     if (error) setError('');
   }, [form]);
+
+  useEffect(() => {
+    if (!token || restored) return;
+    try {
+      const raw = window.localStorage.getItem(`od:proposal-form:${token}`);
+      if (!raw) {
+        setRestored(true);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed?.form) setForm(parsed.form);
+      if (parsed?.step) setStep(parsed.step);
+      if (parsed?.personType) setPersonType(parsed.personType);
+      if (typeof parsed?.sameAsCompany === 'boolean') setSameAsCompany(parsed.sameAsCompany);
+    } catch {
+      // ignore
+    } finally {
+      setRestored(true);
+    }
+  }, [token, restored]);
+
+  useEffect(() => {
+    if (!token || !restored) return;
+    try {
+      window.localStorage.setItem(
+        `od:proposal-form:${token}`,
+        JSON.stringify({
+          form,
+          step,
+          personType,
+          sameAsCompany,
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }, [token, form, step, personType, sameAsCompany, restored]);
 
   useEffect(() => {
     if (personType === 'pj') return;
@@ -269,9 +307,11 @@ const PublicProposalForm: React.FC = () => {
       return;
     }
     if (data.next === 'signature' && data.signUrl) {
+      if (token) window.localStorage.removeItem(`od:proposal-form:${token}`);
       window.location.href = data.signUrl;
       return;
     }
+    if (token) window.localStorage.removeItem(`od:proposal-form:${token}`);
     window.location.href = `/pagamento/${token}`;
   };
 

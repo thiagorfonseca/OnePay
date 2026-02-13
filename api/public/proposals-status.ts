@@ -1,7 +1,8 @@
 import { json, methodNotAllowed, notFound, badRequest, serverError } from '../_utils/http.js';
 import { supabaseAdmin } from '../_utils/supabase.js';
-import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON } from '../_utils/env.js';
+import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON, ZAPSIGN_API_TOKEN } from '../_utils/env.js';
 import { createPayment, ensureCustomer } from '../../src/lib/integrations/asaas.js';
+import { getDocument } from '../../src/lib/integrations/zapsign.js';
 
 const normalizeDoc = (value?: string | null) => (value || '').replace(/\D/g, '');
 
@@ -146,16 +147,36 @@ export default async function handler(req: any, res: any) {
     if (proposal.requires_signature && !['signed', 'paid', 'payment_created'].includes(proposal.status)) {
       const { data: doc } = await supabaseAdmin
         .from('od_zapsign_documents')
-        .select('raw')
+        .select('id, zapsign_doc_id, raw')
         .eq('proposal_id', proposal.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
       signatureUrl =
         doc?.raw?.signers?.[0]?.url ||
         doc?.raw?.signer_url ||
         doc?.raw?.url ||
         null;
+
+      if (!signatureUrl && doc?.zapsign_doc_id && ZAPSIGN_API_TOKEN) {
+        try {
+          const fresh = await getDocument(ZAPSIGN_API_TOKEN, doc.zapsign_doc_id);
+          signatureUrl =
+            fresh?.signers?.[0]?.url ||
+            fresh?.signer_url ||
+            fresh?.url ||
+            signatureUrl;
+          if (signatureUrl) {
+            await supabaseAdmin
+              .from('od_zapsign_documents')
+              .update({ raw: fresh })
+              .eq('id', doc.id);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
     }
 
     return json(res, 200, {
