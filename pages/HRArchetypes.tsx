@@ -9,8 +9,14 @@ const HRArchetypes: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Arquétipos</h1>
-          <p className="text-gray-500">Recursos Humanos • Perfil comportamental</p>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {activeTab === 'links' ? 'Links de Perfil' : 'Arquétipos'}
+          </h1>
+          <p className="text-gray-500">
+            {activeTab === 'links'
+              ? 'Recursos Humanos • Links do teste comportamental'
+              : 'Recursos Humanos • Perfil comportamental'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -20,10 +20,6 @@ const RespondentsTable: React.FC<RespondentsTableProps> = ({ rows, onOpenDetails
               <th className="text-left px-4 py-3">WhatsApp</th>
               <th className="text-left px-4 py-3">Audiência</th>
               <th className="text-left px-4 py-3">Perfil</th>
-              <th className="text-left px-4 py-3">Facilitador</th>
-              <th className="text-left px-4 py-3">Analista</th>
-              <th className="text-left px-4 py-3">Realizador</th>
-              <th className="text-left px-4 py-3">Visionário</th>
               <th className="text-left px-4 py-3">Token</th>
               <th className="text-left px-4 py-3">Ações</th>
             </tr>
@@ -37,10 +33,6 @@ const RespondentsTable: React.FC<RespondentsTableProps> = ({ rows, onOpenDetails
                 <td className="px-4 py-3">{row.phone || '-'}</td>
                 <td className="px-4 py-3">{row.audience_type === 'INTERNAL' ? 'Interno' : 'Externo'}</td>
                 <td className="px-4 py-3 font-semibold text-gray-700">{row.top_profile}</td>
-                <td className="px-4 py-3">{row.scores?.FACILITADOR ?? 0}</td>
-                <td className="px-4 py-3">{row.scores?.ANALISTA ?? 0}</td>
-                <td className="px-4 py-3">{row.scores?.REALIZADOR ?? 0}</td>
-                <td className="px-4 py-3">{row.scores?.VISIONÁRIO ?? 0}</td>
                 <td className="px-4 py-3">{row.public_token}</td>
                 <td className="px-4 py-3">
                   <button
@@ -55,7 +47,7 @@ const RespondentsTable: React.FC<RespondentsTableProps> = ({ rows, onOpenDetails
             ))}
             {rows.length === 0 && (
               <tr>
-                <td className="px-4 py-6 text-center text-gray-400" colSpan={12}>
+                <td className="px-4 py-6 text-center text-gray-400" colSpan={8}>
                   Nenhum respondente encontrado.
                 </td>
               </tr>

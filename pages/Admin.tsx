@@ -86,7 +86,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     { value: '/settings?section=categorias', label: 'Minha Clínica • Categorias' },
     { value: '/settings?section=taxas', label: 'Minha Clínica • Taxas' },
     { value: '/settings?section=clientes', label: 'Minha Clínica • Clientes' },
-    { value: '/settings?section=procedimentos', label: 'Minha Clínica • Procedimentos' },
     { value: '/settings?section=profissionais', label: 'Minha Clínica • Profissionais' },
     { value: '/settings?section=fornecedores', label: 'Minha Clínica • Fornecedores' },
     { value: '/settings?section=usuarios', label: 'Minha Clínica • Usuários' },
@@ -107,6 +106,14 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     { value: '/hr/values', label: 'Recursos Humanos • Teoria de valores' },
     { value: '/analytics/perfil', label: 'Analytics • Perfil comportamental' },
   ];
+  const COMMERCIAL_PRODUCT_OPTIONS = [
+    'Plataforma OnePay',
+    'Cursos',
+    'Consultoria',
+    'Mentoria',
+    'Suporte',
+    'Onboarding',
+  ];
   const PAGE_LABEL_MAP = useMemo(() => Object.fromEntries(PAGE_OPTIONS.map(p => [p.value, p.label])), []);
   const [tab, setTab] = useState<'overview' | 'clinics' | 'users'>(initialTab);
   const [loading, setLoading] = useState(true);
@@ -122,6 +129,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     package_id: '',
     ativo: true,
     logo_url: null as string | null,
+    commercial_products: [] as string[],
+    commercial_package_id: '',
+    commercial_amount: '',
+    commercial_start_date: '',
+    commercial_end_date: '',
+    commercial_status: 'ativo',
+    commercial_owner_user_id: '',
   });
   const [clinicLogoFile, setClinicLogoFile] = useState<File | null>(null);
   const [clinicLogoPreview, setClinicLogoPreview] = useState<string | null>(null);
@@ -141,6 +155,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     package_id: '',
     ativo: true,
     logo_url: null as string | null,
+    commercial_products: [] as string[],
+    commercial_package_id: '',
+    commercial_amount: '',
+    commercial_start_date: '',
+    commercial_end_date: '',
+    commercial_status: 'ativo',
+    commercial_owner_user_id: '',
   });
   const [editClinicLogoFile, setEditClinicLogoFile] = useState<File | null>(null);
   const [editClinicLogoPreview, setEditClinicLogoPreview] = useState<string | null>(null);
@@ -150,6 +171,9 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
   const [clinicViewMode, setClinicViewMode] = useState<'list' | 'boxes'>('list');
   const [clinicUsers, setClinicUsers] = useState<any[]>([]);
+  const [internalUsers, setInternalUsers] = useState<any[]>([]);
+  const [contractProductInput, setContractProductInput] = useState('');
+  const [editContractProductInput, setEditContractProductInput] = useState('');
   const [userForm, setUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -203,6 +227,15 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     if (!error) setPackages((data || []) as any[]);
   };
 
+  const fetchInternalUsers = async () => {
+    const { data } = await (supabase as any)
+      .from('profiles')
+      .select('id, full_name, role')
+      .in('role', ['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales'])
+      .order('full_name', { ascending: true });
+    setInternalUsers((data || []) as any[]);
+  };
+
   const fetchClinicPackages = async () => {
     const { data, error } = await (supabase as any)
       .from('clinic_packages')
@@ -224,6 +257,53 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       await (supabase as any).from('clinic_packages').insert(rows);
     }
     fetchClinicPackages();
+  };
+
+  const parseAmountToCents = (value: string) => {
+    if (!value) return null;
+    const normalized = value.replace(/\./g, '').replace(',', '.');
+    const num = Number(normalized);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num * 100);
+  };
+
+  const formatCentsToInput = (value?: number | null) => {
+    if (!value && value !== 0) return '';
+    return (value / 100).toFixed(2).replace('.', ',');
+  };
+
+  const normalizeProductInput = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+  const addCommercialProduct = (value: string, target: 'create' | 'edit') => {
+    const normalized = normalizeProductInput(value);
+    if (!normalized) return;
+    if (target === 'create') {
+      setClinicForm((prev) => {
+        if (prev.commercial_products.includes(normalized)) return prev;
+        return { ...prev, commercial_products: [...prev.commercial_products, normalized] };
+      });
+      setContractProductInput('');
+    } else {
+      setEditClinicForm((prev) => {
+        if (prev.commercial_products.includes(normalized)) return prev;
+        return { ...prev, commercial_products: [...prev.commercial_products, normalized] };
+      });
+      setEditContractProductInput('');
+    }
+  };
+
+  const removeCommercialProduct = (value: string, target: 'create' | 'edit') => {
+    if (target === 'create') {
+      setClinicForm((prev) => ({
+        ...prev,
+        commercial_products: prev.commercial_products.filter((item) => item !== value),
+      }));
+    } else {
+      setEditClinicForm((prev) => ({
+        ...prev,
+        commercial_products: prev.commercial_products.filter((item) => item !== value),
+      }));
+    }
   };
 
   const handleToggleClinics = async (ids: string[], ativo: boolean) => {
@@ -249,10 +329,18 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       package_id: '',
       ativo: true,
       logo_url: null,
+      commercial_products: [],
+      commercial_package_id: '',
+      commercial_amount: '',
+      commercial_start_date: '',
+      commercial_end_date: '',
+      commercial_status: 'ativo',
+      commercial_owner_user_id: '',
     });
     setClinicLogoFile(null);
     setClinicLogoPreview(null);
     setClinicLogoError(null);
+    setContractProductInput('');
   };
 
   const resetEditClinicForm = () => {
@@ -268,10 +356,18 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       package_id: '',
       ativo: true,
       logo_url: null,
+      commercial_products: [],
+      commercial_package_id: '',
+      commercial_amount: '',
+      commercial_start_date: '',
+      commercial_end_date: '',
+      commercial_status: 'ativo',
+      commercial_owner_user_id: '',
     });
     setEditClinicLogoFile(null);
     setEditClinicLogoPreview(null);
     setEditClinicLogoError(null);
+    setEditContractProductInput('');
   };
 
   const closeClinicModal = () => {
@@ -334,11 +430,67 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       package_id: (clinicPackageMap[clinic.id] || [])[0] || '',
       ativo: clinic.ativo ?? true,
       logo_url: clinic.logo_url || null,
+      commercial_products: [],
+      commercial_package_id: '',
+      commercial_amount: '',
+      commercial_start_date: '',
+      commercial_end_date: '',
+      commercial_status: 'ativo',
+      commercial_owner_user_id: '',
     });
     setEditClinicLogoFile(null);
     setEditClinicLogoPreview(null);
     setEditClinicLogoError(null);
+    setEditContractProductInput('');
+    loadClinicContract(clinic.id);
     setShowClinicModal(true);
+  };
+
+  const loadClinicContract = async (clinicId: string) => {
+    if (!clinicId) return;
+    const { data } = await (supabase as any)
+      .from('commercial_contracts')
+      .select('products, package_id, amount_cents, start_date, end_date, status, owner_user_id')
+      .eq('clinic_id', clinicId)
+      .maybeSingle();
+    if (!data) return;
+    setEditClinicForm((prev) => ({
+      ...prev,
+      commercial_products: Array.isArray(data.products) ? data.products : [],
+      commercial_package_id: data.package_id || '',
+      commercial_amount: formatCentsToInput(data.amount_cents),
+      commercial_start_date: data.start_date || '',
+      commercial_end_date: data.end_date || '',
+      commercial_status: data.status || 'ativo',
+      commercial_owner_user_id: data.owner_user_id || '',
+    }));
+  };
+
+  const persistClinicContract = async (clinicId: string, form: typeof clinicForm) => {
+    if (!clinicId) return;
+    const hasData =
+      form.commercial_products.length ||
+      form.commercial_package_id ||
+      form.commercial_amount ||
+      form.commercial_start_date ||
+      form.commercial_end_date ||
+      form.commercial_owner_user_id;
+    if (!hasData) {
+      await (supabase as any).from('commercial_contracts').delete().eq('clinic_id', clinicId);
+      return;
+    }
+    const amountCents = parseAmountToCents(form.commercial_amount);
+    const payload = {
+      clinic_id: clinicId,
+      products: form.commercial_products || [],
+      package_id: form.commercial_package_id || null,
+      amount_cents: amountCents,
+      start_date: form.commercial_start_date || null,
+      end_date: form.commercial_end_date || null,
+      status: form.commercial_status || 'ativo',
+      owner_user_id: form.commercial_owner_user_id || null,
+    };
+    await (supabase as any).from('commercial_contracts').upsert(payload, { onConflict: 'clinic_id' });
   };
 
   const openEditUserModal = (user: any) => {
@@ -430,6 +582,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       }
       if (createdClinic?.id) {
         await saveClinicPackages(createdClinic.id, package_id || '');
+        await persistClinicContract(createdClinic.id, clinicForm);
       }
       resetClinicForm();
       fetchClinics();
@@ -466,6 +619,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         .eq('id', editingClinicId);
       if (error) throw error;
       await saveClinicPackages(editingClinicId, package_id || '');
+      await persistClinicContract(editingClinicId, editClinicForm);
       setShowClinicModal(false);
       resetEditClinicForm();
       fetchClinics();
@@ -654,6 +808,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     fetchClinics();
     fetchPackages();
     fetchClinicPackages();
+    fetchInternalUsers();
     supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => {
       if (data) setClinicUsers(data as any[]);
     });
@@ -956,6 +1111,138 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                   <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
                 ))}
               </select>
+            </div>
+            <div className="md:col-span-3 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-1 mb-3">
+                <h3 className="text-sm font-semibold text-gray-800">Contrato Comercial</h3>
+                <p className="text-xs text-gray-500">Preencha os dados comerciais que alimentam o Relatório Gerencial.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Produto comprado</label>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      value={contractProductInput}
+                      onChange={(e) => setContractProductInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        addCommercialProduct(contractProductInput, 'create');
+                      }}
+                      list="commercial-products-create"
+                      placeholder="Digite e pressione Enter"
+                      className="flex-1 min-w-[220px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addCommercialProduct(contractProductInput, 'create')}
+                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                  <datalist id="commercial-products-create">
+                    {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
+                      <option key={option} value={option} />
+                    ))}
+                  </datalist>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {clinicForm.commercial_products.map((product) => (
+                      <button
+                        key={product}
+                        type="button"
+                        onClick={() => removeCommercialProduct(product, 'create')}
+                        className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                      >
+                        {product} ✕
+                      </button>
+                    ))}
+                    {!clinicForm.commercial_products.length && (
+                      <span className="text-xs text-gray-400">Nenhum produto selecionado.</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => addCommercialProduct(option, 'create')}
+                        className="px-2 py-1 text-xs border border-gray-200 rounded-full text-gray-600 hover:border-gray-300"
+                      >
+                        + {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pacote comprado</label>
+                  <select
+                    value={clinicForm.commercial_package_id}
+                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_package_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                  >
+                    <option value="">Selecione...</option>
+                    {packages.map(pkg => (
+                      <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                  <input
+                    value={clinicForm.commercial_amount}
+                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_amount: e.target.value }))}
+                    placeholder="0,00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Início do contrato</label>
+                  <input
+                    type="date"
+                    value={clinicForm.commercial_start_date}
+                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_start_date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Término do contrato</label>
+                  <input
+                    type="date"
+                    value={clinicForm.commercial_end_date}
+                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_end_date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status do contrato</label>
+                  <select
+                    value={clinicForm.commercial_status}
+                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_status: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                  >
+                    <option value="ativo">Ativo</option>
+                    <option value="vencendo">Vencendo</option>
+                    <option value="encerrado">Encerrado</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Responsável interno</label>
+                  <select
+                    value={clinicForm.commercial_owner_user_id}
+                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_owner_user_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                  >
+                    <option value="">Selecione...</option>
+                    {internalUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.full_name || user.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
@@ -1320,6 +1607,138 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                         <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
                       ))}
                     </select>
+                    </div>
+                    <div className="md:col-span-3 border-t border-gray-100 pt-4">
+                      <div className="flex flex-col gap-1 mb-3">
+                        <h3 className="text-sm font-semibold text-gray-800">Contrato Comercial</h3>
+                        <p className="text-xs text-gray-500">Edite os dados comerciais vinculados à clínica.</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Produto comprado</label>
+                          <div className="flex flex-wrap gap-2">
+                            <input
+                              value={editContractProductInput}
+                              onChange={(e) => setEditContractProductInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key !== 'Enter') return;
+                                e.preventDefault();
+                                addCommercialProduct(editContractProductInput, 'edit');
+                              }}
+                              list="commercial-products-edit"
+                              placeholder="Digite e pressione Enter"
+                              className="flex-1 min-w-[220px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => addCommercialProduct(editContractProductInput, 'edit')}
+                              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                            >
+                              Adicionar
+                            </button>
+                          </div>
+                          <datalist id="commercial-products-edit">
+                            {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
+                              <option key={option} value={option} />
+                            ))}
+                          </datalist>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {editClinicForm.commercial_products.map((product) => (
+                              <button
+                                key={product}
+                                type="button"
+                                onClick={() => removeCommercialProduct(product, 'edit')}
+                                className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                              >
+                                {product} ✕
+                              </button>
+                            ))}
+                            {!editClinicForm.commercial_products.length && (
+                              <span className="text-xs text-gray-400">Nenhum produto selecionado.</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
+                              <button
+                                key={option}
+                                type="button"
+                                onClick={() => addCommercialProduct(option, 'edit')}
+                                className="px-2 py-1 text-xs border border-gray-200 rounded-full text-gray-600 hover:border-gray-300"
+                              >
+                                + {option}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Pacote comprado</label>
+                          <select
+                            value={editClinicForm.commercial_package_id}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_package_id: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                          >
+                            <option value="">Selecione...</option>
+                            {packages.map(pkg => (
+                              <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                          <input
+                            value={editClinicForm.commercial_amount}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_amount: e.target.value }))}
+                            placeholder="0,00"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Início do contrato</label>
+                          <input
+                            type="date"
+                            value={editClinicForm.commercial_start_date}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_start_date: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Término do contrato</label>
+                          <input
+                            type="date"
+                            value={editClinicForm.commercial_end_date}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_end_date: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Status do contrato</label>
+                          <select
+                            value={editClinicForm.commercial_status}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_status: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                          >
+                            <option value="ativo">Ativo</option>
+                            <option value="vencendo">Vencendo</option>
+                            <option value="encerrado">Encerrado</option>
+                            <option value="cancelado">Cancelado</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Responsável interno</label>
+                          <select
+                            value={editClinicForm.commercial_owner_user_id}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_owner_user_id: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                          >
+                            <option value="">Selecione...</option>
+                            {internalUsers.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.full_name || user.id}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
                     <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>

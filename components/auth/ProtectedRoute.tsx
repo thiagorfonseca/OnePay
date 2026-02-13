@@ -9,7 +9,7 @@ interface Props {
 }
 
 const ProtectedRoute: React.FC<Props> = ({ children, page }) => {
-  const { session, loading, hasPageAccess, isSystemAdmin } = useAuth();
+  const { session, loading, hasPageAccess, isSystemAdmin, allowedPages } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -25,6 +25,10 @@ const ProtectedRoute: React.FC<Props> = ({ children, page }) => {
   }
 
   if (!isOnboardingWelcome && pageKey && !hasPageAccess(pageKey)) {
+    const fallback = allowedPages?.length ? allowedPages[0] : null;
+    if (fallback && fallback !== pageKey) {
+      return <Navigate to={fallback} replace />;
+    }
     return <Navigate to="/access-denied" replace />;
   }
 

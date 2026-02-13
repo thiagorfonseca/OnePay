@@ -113,6 +113,7 @@ const AdminTeam: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [teamViewMode, setTeamViewMode] = useState<'list' | 'boxes'>('list');
+  const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
   const callbackUrl = buildPublicUrl('/auth/callback');
   const adminPagesRef = useRef<HTMLDetailsElement | null>(null);
 
@@ -328,6 +329,25 @@ const AdminTeam: React.FC = () => {
       return;
     }
     await fetchMembers();
+  };
+
+  const handleResendInvite = async (invite: any) => {
+    if (!invite?.email) return;
+    if (!confirm(`Reenviar convite para ${invite.email}?`)) return;
+    setResendingInviteId(invite.id);
+    try {
+      const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
+      if (callbackUrl) otpOptions.emailRedirectTo = callbackUrl;
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: invite.email,
+        options: otpOptions,
+      });
+      if (otpError) throw otpError;
+    } catch (err: any) {
+      alert(`Não foi possível reenviar o convite: ${err.message || 'Erro inesperado.'}`);
+    } finally {
+      setResendingInviteId(null);
+    }
   };
 
   return (
@@ -693,17 +713,27 @@ const AdminTeam: React.FC = () => {
                   <p className="text-xs text-gray-500">{invite.email}</p>
                   <p className="text-xs text-gray-400">Role: {invite.role}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!confirm('Revogar convite?')) return;
-                    await (supabase as any).from('system_admin_invites').delete().eq('id', invite.id);
-                    fetchInvites();
-                  }}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  Revogar
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleResendInvite(invite)}
+                    disabled={resendingInviteId === invite.id}
+                    className="text-sm text-sky-600 disabled:opacity-50"
+                  >
+                    {resendingInviteId === invite.id ? 'Enviando...' : 'Reenviar convite'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm('Revogar convite?')) return;
+                      await (supabase as any).from('system_admin_invites').delete().eq('id', invite.id);
+                      fetchInvites();
+                    }}
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    Revogar
+                  </button>
+                </div>
               </div>
             ))}
             {invites.length === 0 && (

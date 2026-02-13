@@ -134,7 +134,6 @@ const PublicLinksManagementPage: React.FC = () => {
   if (!clinicId) {
     return (
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-800">Links de Perfil</h1>
         <p className="text-sm text-gray-500">Selecione uma clínica para gerenciar os links.</p>
       </div>
     );
@@ -142,11 +141,6 @@ const PublicLinksManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Links de Perfil</h1>
-        <p className="text-gray-500">Crie e gerencie links públicos do teste comportamental.</p>
-      </div>
-
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div className="bg-white border border-gray-100 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4">

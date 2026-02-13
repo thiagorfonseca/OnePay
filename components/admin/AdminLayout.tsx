@@ -14,6 +14,7 @@ import {
   FileText,
   ClipboardList,
   Briefcase,
+  BarChart3,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -23,15 +24,15 @@ import { useAuth } from '../../src/auth/AuthProvider';
 const AdminLayout: React.FC = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({ Comercial: true });
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({ Comercial: false });
   const { hasAdminPageAccess } = useAuth();
 
   const navigation = [
+    { name: 'Agenda', href: '/admin/agenda', icon: Calendar, highlight: true },
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Clínicas', href: '/admin/clinics', icon: Building2 },
     { name: 'Usuários', href: '/admin/users', icon: Users },
     { name: 'Equipe', href: '/admin/team', icon: Users },
-    { name: 'Agenda', href: '/admin/agenda', icon: Calendar, highlight: true },
     { name: 'Pacotes', href: '/admin/packages', icon: Package },
     { name: 'Conteúdos', href: '/admin/content', icon: BookOpen },
     {
@@ -41,6 +42,7 @@ const AdminLayout: React.FC = () => {
         { name: 'Clientes', href: '/admin/clientes', icon: Users },
         { name: 'Contratos', href: '/admin/contratos', icon: FileText },
         { name: 'Propostas', href: '/admin/propostas', icon: ClipboardList },
+        { name: 'Relatórios', href: '/admin/comercial/relatorios', icon: BarChart3 },
       ],
     },
     { name: 'Perfil', href: '/admin/profile', icon: User },
@@ -94,24 +96,42 @@ const AdminLayout: React.FC = () => {
           <nav className="flex-1 px-4 py-6 space-y-1">
             {visibleNavigation.map((item: any) => {
               if (item.children) {
-                const isGroupOpen = openGroups[item.name] ?? false;
                 const isChildActive = item.children.some((child: any) => isActive(child.href));
+                const isComercial = item.name === 'Comercial';
+                const isGroupOpen = isComercial ? isChildActive : (openGroups[item.name] ?? false);
+                const firstChild = item.children[0];
                 return (
                   <div key={item.name} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(item.name)}
-                      className={`
-                        w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
-                        ${isChildActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
-                      `}
-                    >
-                      <span className="flex items-center gap-3">
-                        <item.icon size={18} />
-                        {item.name}
-                      </span>
-                      {isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </button>
+                    {isComercial ? (
+                      <Link
+                        to={firstChild?.href || '/admin/clientes'}
+                        className={`
+                          w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          ${isChildActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                        `}
+                      >
+                        <span className="flex items-center gap-3">
+                          <item.icon size={18} />
+                          {item.name}
+                        </span>
+                        {isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(item.name)}
+                        className={`
+                          w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          ${isChildActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                        `}
+                      >
+                        <span className="flex items-center gap-3">
+                          <item.icon size={18} />
+                          {item.name}
+                        </span>
+                        {isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </button>
+                    )}
                     {isGroupOpen ? (
                       <div className="pl-6 space-y-1">
                         {item.children.map((child: any) => (

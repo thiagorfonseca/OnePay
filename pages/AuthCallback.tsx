@@ -76,6 +76,19 @@ const AuthCallback: React.FC = () => {
           }
         }
 
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id || null;
+        let isSystemAdmin = false;
+        if (userId) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', userId)
+            .maybeSingle();
+          const role = prof?.role;
+          isSystemAdmin = role === 'system_owner' || role === 'super_admin' || role === 'one_doctor_admin' || role === 'one_doctor_sales';
+        }
+
         const safeRedirect =
           redirectToParam && redirectToParam.startsWith('/') && !redirectToParam.startsWith('//')
             ? redirectToParam
@@ -83,7 +96,7 @@ const AuthCallback: React.FC = () => {
 
         setStatus('success');
         setMessage('Autenticado! Redirecionando...');
-        navigate(safeRedirect, { replace: true });
+        navigate(isSystemAdmin ? '/admin/dashboard' : safeRedirect, { replace: true });
       } catch (err: any) {
         setStatus('error');
         setMessage(normalizeAuthError(err?.message || 'Erro ao validar login.'));

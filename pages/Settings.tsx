@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Tag, Loader2, CreditCard, User, CheckSquare, Upload, Download, Users } from 'lucide-react';
+import { Plus, Trash2, Loader2, CreditCard, User, Upload, Download, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl, formatDate } from '../lib/utils';
 import { Category } from '../types';
@@ -7,7 +7,7 @@ import { useAuth } from '../src/auth/AuthProvider';
 import { useSearchParams } from 'react-router-dom';
 import { useModalControls } from '../hooks/useModalControls';
 
-type Section = 'geral' | 'categorias' | 'taxas' | 'clientes' | 'procedimentos' | 'profissionais' | 'fornecedores' | 'usuarios';
+type Section = 'geral' | 'categorias' | 'taxas' | 'clientes' | 'profissionais' | 'fornecedores' | 'usuarios';
 
 const detectCsvSeparator = (line: string) => {
   const commaCount = (line.match(/,/g) || []).length;
@@ -66,13 +66,79 @@ const normalizeAction = (value: string) => {
   return null;
 };
 
-const normalizeTipo = (value: string) => {
-  const raw = value.trim().toLowerCase();
-  if (!raw) return null;
-  if (['receita', 'receitas', 'r', 'income'].includes(raw)) return 'receita';
-  if (['despesa', 'despesas', 'd', 'expense'].includes(raw)) return 'despesa';
-  return null;
-};
+const PRESET_REVENUE_CATEGORIES = [
+  'ACERTOS',
+  'ALUGUEL',
+  'ANTECIPACAO DE RECEITA',
+  'AVALIAÇÃO',
+  'BIOESTIMULADOR',
+  'BIOPSIA',
+  'BRINDES',
+  'CAPILAR',
+  'CIRÚRGICO',
+  'CONSULTA',
+  'CORPORAL',
+  'DRUG DELIVERY',
+  'ESTETICA',
+  'EXECUCAO POS PROCEDIMENTO',
+  'FAMILIA',
+  'FELLOW',
+  'FIOS',
+  'GIFT CARD',
+  'INJETÁVEL',
+  'INJETÁVEL CORPORAL',
+  'INJETÁVEL FACIAL',
+  'INTRADERMOTERAPIA CAPILAR',
+  'LOCACAO',
+  'LOCACAO DE EQUIPAMENTO',
+  'MMP',
+  'PEELING',
+  'PEQUENA CIRURGIA',
+  'PROCED GINECOLOGICO',
+  'PRODUTOS',
+  'REMODELADOR',
+  'RETORNO',
+  'SERINGA DE PREENCHIMENTO',
+  'SKINBOOSTER',
+  'SOROTERAPIA',
+  'TECNOLOGIA CORPORAL',
+  'TECNOLOGIA FACIAL',
+  'TRATAMENTO',
+  'TREINAMENTO',
+  'WORKSHOP',
+];
+
+const PRESET_EXPENSE_CATEGORIES = [
+  'ALIMENTACAO',
+  'COMISSÃO PARCEIROS',
+  'CONFRATERNIZAÇÃO',
+  'CONSULTORIA',
+  'CONSUMIVEL EQUIPAMENTOS',
+  'CURSOS E TREINAMENTOS',
+  'CUSTO FINANCEIROS',
+  'DESPESAS ADMINISTRATIVAS',
+  'DESPESAS COM PACIENTES',
+  'DISTRIBUIÇÃO LUCRO',
+  'ESTRUTURA / LOGISTICA',
+  'FORMULAS MANIPULADAS',
+  'FRETE',
+  'IMPOSTOS',
+  'INSUMOS',
+  'INSUMOS/PRODUTOS',
+  'INVESTIMENTOS',
+  'MANUTENÇÃO CLINICA',
+  'MANUTENÇÃO EQUIPAMENTOS',
+  'MARKETING',
+  'MATERIAIS GERAIS',
+  'MATERIAIS UTILIZADO EM PROCEDIMENTOS',
+  'MEDICAMENTOS',
+  'PRESTADOR DE SERVIÇO',
+  'PRO LABORE',
+  'RECURSOS HUMANOS',
+  'REPASSES FINANCEIROS',
+];
+
+const normalizeCategoryName = (value: string) => value.trim().toLowerCase();
 
 const USER_AVATAR_BUCKET = 'user-avatars';
 const MAX_AVATAR_DIMENSION = 350;
@@ -140,7 +206,9 @@ const Settings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeTab, setActiveTab] = useState<'receita' | 'despesa'>('receita');
-  const [categoryImporting, setCategoryImporting] = useState(false);
+  const [selectedRevenueCategories, setSelectedRevenueCategories] = useState<string[]>([]);
+  const [selectedExpenseCategories, setSelectedExpenseCategories] = useState<string[]>([]);
+  const [savingCategories, setSavingCategories] = useState(false);
   const { effectiveClinicId: clinicId, isAdmin, clinic, role } = useAuth();
 
   const PAGE_OPTIONS = [
@@ -160,7 +228,6 @@ const Settings: React.FC = () => {
     { value: '/settings?section=categorias', label: 'Minha Clínica • Categorias' },
     { value: '/settings?section=taxas', label: 'Minha Clínica • Taxas' },
     { value: '/settings?section=clientes', label: 'Minha Clínica • Clientes' },
-    { value: '/settings?section=procedimentos', label: 'Minha Clínica • Procedimentos' },
     { value: '/settings?section=profissionais', label: 'Minha Clínica • Profissionais' },
     { value: '/settings?section=fornecedores', label: 'Minha Clínica • Fornecedores' },
     { value: '/settings?section=usuarios', label: 'Minha Clínica • Usuários' },
@@ -182,11 +249,14 @@ const Settings: React.FC = () => {
     { value: '/analytics/perfil', label: 'Analytics • Perfil comportamental' },
   ];
   const PAGE_LABEL_MAP = useMemo(() => Object.fromEntries(PAGE_OPTIONS.map((p) => [p.value, p.label])), []);
-
-  // Form State - Categorias
-  const [newName, setNewName] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const revenuePresetMap = useMemo(
+    () => new Map(PRESET_REVENUE_CATEGORIES.map((name) => [normalizeCategoryName(name), name])),
+    []
+  );
+  const expensePresetMap = useMemo(
+    () => new Map(PRESET_EXPENSE_CATEGORIES.map((name) => [normalizeCategoryName(name), name])),
+    []
+  );
 
   // Form State - Taxas
   const [cardFees, setCardFees] = useState<any[]>([]);
@@ -210,15 +280,6 @@ const Settings: React.FC = () => {
   const customerPageSize = 10;
 
   // Form State - Clínicas
-  // Procedimentos
-  const [procedures, setProcedures] = useState<any[]>([]);
-  const [procedureForm, setProcedureForm] = useState({ categoria: '', procedimento: '', valor_cobrado: '', custo_insumo: '', tempo_minutos: '' });
-  const [editingProcedureId, setEditingProcedureId] = useState<string | null>(null);
-  const [savingProcedure, setSavingProcedure] = useState(false);
-  const [uploadingCsv, setUploadingCsv] = useState(false);
-  const [showProcedureModal, setShowProcedureModal] = useState(false);
-  const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
-  const [procedureSearch, setProcedureSearch] = useState('');
 
   // Profissionais
   const [professionals, setProfessionals] = useState<any[]>([]);
@@ -259,11 +320,6 @@ const Settings: React.FC = () => {
     setCustomerError(null);
   };
 
-  const closeProcedureModal = () => {
-    setShowProcedureModal(false);
-    setEditingProcedureId(null);
-  };
-
   const closeUserModal = () => {
     setShowUserModal(false);
     resetEditUserForm();
@@ -272,11 +328,6 @@ const Settings: React.FC = () => {
   const customerModalControls = useModalControls({
     isOpen: showCustomerModal,
     onClose: closeCustomerModal,
-  });
-
-  const procedureModalControls = useModalControls({
-    isOpen: showProcedureModal,
-    onClose: closeProcedureModal,
   });
 
   const userModalControls = useModalControls({
@@ -405,7 +456,21 @@ const Settings: React.FC = () => {
       const { data, error } = await query;
       
       if (error) throw error;
-      setCategories(data as any || []);
+      const nextCategories = (data as any) || [];
+      setCategories(nextCategories);
+      const revenueSelected = new Set<string>();
+      const expenseSelected = new Set<string>();
+      nextCategories.forEach((cat: any) => {
+        const normalized = normalizeCategoryName(cat.name || '');
+        if (cat.tipo === 'receita' && revenuePresetMap.has(normalized)) {
+          revenueSelected.add(revenuePresetMap.get(normalized) as string);
+        }
+        if (cat.tipo === 'despesa' && expensePresetMap.has(normalized)) {
+          expenseSelected.add(expensePresetMap.get(normalized) as string);
+        }
+      });
+      setSelectedRevenueCategories(Array.from(revenueSelected));
+      setSelectedExpenseCategories(Array.from(expenseSelected));
     } catch (error) {
       console.error(error);
     } finally {
@@ -425,13 +490,6 @@ const Settings: React.FC = () => {
     if (clinicId) query = query.eq('clinic_id', clinicId);
     const { data, error } = await query;
     if (!error && data) setCustomers(data as any[]);
-  };
-
-  const fetchProcedures = async () => {
-    let query = supabase.from('procedures').select('*').order('created_at', { ascending: false });
-    if (clinicId) query = query.eq('clinic_id', clinicId);
-    const { data, error } = await query;
-    if (!error && data) setProcedures(data as any[]);
   };
 
   const fetchProfessionals = async () => {
@@ -466,7 +524,7 @@ const Settings: React.FC = () => {
   // Sincronizar seção com querystring
   useEffect(() => {
     const s = searchParams.get('section') as Section | null;
-    if (s && ['geral','categorias','taxas','clientes','procedimentos','profissionais','fornecedores','usuarios'].includes(s)) {
+    if (s && ['geral','categorias','taxas','clientes','profissionais','fornecedores','usuarios'].includes(s)) {
       setSection(s);
     }
   }, [searchParams]);
@@ -613,204 +671,87 @@ const Settings: React.FC = () => {
     fetchCategories();
     fetchCardFees();
     fetchCustomers();
-    fetchProcedures();
     fetchProfessionals();
     fetchSuppliers();
   }, [clinicId]);
 
 
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const sortByPreset = (values: string[], preset: string[]) => {
+    const set = new Set(values.map(normalizeCategoryName));
+    return preset.filter((name) => set.has(normalizeCategoryName(name)));
+  };
+
+  const toggleCategorySelection = (name: string) => {
+    if (activeTab === 'receita') {
+      setSelectedRevenueCategories((prev) => {
+        const normalized = normalizeCategoryName(name);
+        const exists = prev.some((item) => normalizeCategoryName(item) === normalized);
+        const next = exists ? prev.filter((item) => normalizeCategoryName(item) !== normalized) : [...prev, name];
+        return sortByPreset(next, PRESET_REVENUE_CATEGORIES);
+      });
+      return;
+    }
+    setSelectedExpenseCategories((prev) => {
+      const normalized = normalizeCategoryName(name);
+      const exists = prev.some((item) => normalizeCategoryName(item) === normalized);
+      const next = exists ? prev.filter((item) => normalizeCategoryName(item) !== normalized) : [...prev, name];
+      return sortByPreset(next, PRESET_EXPENSE_CATEGORIES);
+    });
+  };
+
+  const selectAllCategories = () => {
+    if (activeTab === 'receita') {
+      setSelectedRevenueCategories([...PRESET_REVENUE_CATEGORIES]);
+    } else {
+      setSelectedExpenseCategories([...PRESET_EXPENSE_CATEGORIES]);
+    }
+  };
+
+  const clearAllCategories = () => {
+    if (activeTab === 'receita') {
+      setSelectedRevenueCategories([]);
+    } else {
+      setSelectedExpenseCategories([]);
+    }
+  };
+
+  const saveCategorySelection = async () => {
     if (!clinicId) {
       alert('Nenhuma clínica ativa definida.');
       return;
     }
-    if (!newName.trim()) return;
-    
-    setAdding(true);
+    setSavingCategories(true);
     try {
-      if (editingCategoryId) {
-        const { error } = await supabase.from('categories').update({
-          name: newName
-        }).eq('id', editingCategoryId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('categories').insert([{
-          name: newName,
+      const selected = activeTab === 'receita' ? selectedRevenueCategories : selectedExpenseCategories;
+      const selectedSet = new Set(selected.map(normalizeCategoryName));
+      const existing = categories.filter((cat) => (cat as any).tipo === activeTab);
+      const existingSet = new Set(existing.map((cat) => normalizeCategoryName(cat.name)));
+      const toCreate = selected
+        .filter((name) => !existingSet.has(normalizeCategoryName(name)))
+        .map((name) => ({
+          name,
           tipo: activeTab,
           cor_opcional: activeTab === 'receita' ? '#0ea5e9' : '#ef4444',
-          clinic_id: clinicId
-        }]);
-
-        if (error) throw error;
-      }
-      
-      setNewName('');
-      setEditingCategoryId(null);
-      fetchCategories();
-    } catch (error: any) {
-      alert('Erro ao criar: ' + error.message);
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Excluir categoria?')) return;
-    try {
-      const { error } = await supabase.from('categories').delete().eq('id', id);
-      if (error) throw error;
-      if (editingCategoryId === id) {
-        setEditingCategoryId(null);
-        setNewName('');
-      }
-      fetchCategories();
-    } catch (error: any) {
-      alert('Erro: ' + error.message);
-    }
-  };
-
-  const handleImportCategories = async (file: File) => {
-    if (!clinicId) {
-      alert('Nenhuma clínica ativa definida.');
-      return;
-    }
-    setCategoryImporting(true);
-    try {
-      const text = await decodeCsvFile(file);
-      const { lines, header, parseLine } = parseCsvText(text);
-      const hasHeader = header.some((h) =>
-        ['acao', 'ação', 'action', 'nome', 'categoria', 'tipo', 'id'].some((needle) => h.includes(needle))
-      );
-      const dataLines = hasHeader ? lines.slice(1) : lines;
-
-      const findIdx = (needles: string[]) => {
-        const idx = header.findIndex((h) => needles.some((needle) => h.includes(needle)));
-        return idx >= 0 ? idx : -1;
-      };
-
-      const idxAction = hasHeader ? findIdx(['acao', 'ação', 'action']) : -1;
-      const idxId = hasHeader ? findIdx(['id']) : -1;
-      const idxNome = hasHeader ? findIdx(['nome', 'categoria']) : -1;
-      const idxTipo = hasHeader ? findIdx(['tipo']) : -1;
-      const fallbackNome = idxNome >= 0 ? idxNome : (idxAction >= 0 || idxId >= 0 ? 2 : 0);
-      const fallbackTipo = idxTipo >= 0 ? idxTipo : (idxAction >= 0 || idxId >= 0 ? 3 : 1);
-      const fallbackId = idxId >= 0 ? idxId : (idxAction >= 0 ? 1 : -1);
-
-      const toCreate: any[] = [];
-      const toUpdate: { id: string; payload: any }[] = [];
-      const toDelete: string[] = [];
-      const rejected: { line: number; reason: string }[] = [];
-
-      const pick = (cols: string[], idxHeader: number, fallback: number) => {
-        const idx = idxHeader >= 0 ? idxHeader : fallback;
-        return (cols[idx] ?? '').trim();
-      };
-
-      dataLines.forEach((line, index) => {
-        const cols = parseLine(line);
-        if (cols.every((col) => !col.trim())) return;
-
-        const actionRaw = idxAction >= 0 ? pick(cols, idxAction, 0) : '';
-        const id = pick(cols, idxId, fallbackId);
-        const name = pick(cols, idxNome, fallbackNome);
-        const tipoRaw = pick(cols, idxTipo, fallbackTipo);
-
-        let action = actionRaw ? normalizeAction(actionRaw) : null;
-        if (actionRaw && !action) {
-          rejected.push({ line: index + 1, reason: 'Ação inválida' });
-          return;
-        }
-        if (!action) action = id ? 'update' : 'create';
-
-        if (action === 'delete') {
-          if (!id) {
-            rejected.push({ line: index + 1, reason: 'ID obrigatório para apagar' });
-            return;
-          }
-          toDelete.push(id);
-          return;
-        }
-
-        const tipoParsed = normalizeTipo(tipoRaw);
-        if (action === 'create') {
-          if (!name) {
-            rejected.push({ line: index + 1, reason: 'Nome obrigatório' });
-            return;
-          }
-          const tipo = tipoParsed || activeTab;
-          toCreate.push({
-            name,
-            tipo,
-            cor_opcional: tipo === 'receita' ? '#0ea5e9' : '#ef4444',
-            clinic_id: clinicId,
-          });
-          return;
-        }
-
-        if (!id) {
-          rejected.push({ line: index + 1, reason: 'ID obrigatório para atualizar' });
-          return;
-        }
-
-        const payload: any = {};
-        if (name) payload.name = name;
-        if (tipoParsed) {
-          payload.tipo = tipoParsed;
-          payload.cor_opcional = tipoParsed === 'receita' ? '#0ea5e9' : '#ef4444';
-        }
-        if (!Object.keys(payload).length) {
-          rejected.push({ line: index + 1, reason: 'Nada para atualizar' });
-          return;
-        }
-        toUpdate.push({ id, payload });
-      });
-
-      const totalOps = toCreate.length + toUpdate.length + toDelete.length;
-      if (!totalOps && rejected.length === 0) {
-        alert('Nenhuma linha válida encontrada no CSV.');
-        return;
-      }
+          clinic_id: clinicId,
+        }));
+      const toDelete = existing
+        .filter((cat) => !selectedSet.has(normalizeCategoryName(cat.name)))
+        .map((cat) => cat.id);
 
       if (toCreate.length) {
         const { error } = await supabase.from('categories').insert(toCreate);
         if (error) throw error;
       }
-
-      if (toUpdate.length) {
-        const results = await Promise.all(
-          toUpdate.map((item) =>
-            supabase.from('categories').update(item.payload).eq('id', item.id).eq('clinic_id', clinicId)
-          )
-        );
-        const failed = results.find((result) => result.error);
-        if (failed?.error) throw failed.error;
-      }
-
       if (toDelete.length) {
-        const { error } = await supabase
-          .from('categories')
-          .delete()
-          .in('id', toDelete)
-          .eq('clinic_id', clinicId);
+        const { error } = await supabase.from('categories').delete().in('id', toDelete);
         if (error) throw error;
       }
-
-      fetchCategories();
-
-      if (totalOps || rejected.length) {
-        const msg = [
-          `Criadas: ${toCreate.length}`,
-          `Atualizadas: ${toUpdate.length}`,
-          `Apagadas: ${toDelete.length}`,
-          `Rejeitadas: ${rejected.length}`,
-        ].join(' • ');
-        alert(`Importação de categorias concluída. ${msg}`);
-      }
+      await fetchCategories();
+      alert('Categorias atualizadas.');
     } catch (error: any) {
-      alert('Erro ao importar categorias: ' + error.message);
+      alert('Erro ao salvar categorias: ' + error.message);
     } finally {
-      setCategoryImporting(false);
+      setSavingCategories(false);
     }
   };
 
@@ -1171,23 +1112,6 @@ const Settings: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const downloadCategoriesCsv = (rows: Category[], tipo: 'receita' | 'despesa') => {
-    const escapeValue = (value: string) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-    const header = ['nome', 'tipo'];
-    const lines = rows.map((row) => [
-      escapeValue(row.name || ''),
-      escapeValue((row as any).tipo || tipo),
-    ].join(','));
-    const csv = [header.join(','), ...lines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `categorias_${tipo}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const downloadSuppliersCsv = (rows: any[]) => {
     const escapeValue = (value: string) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const header = ['nome', 'documento', 'telefone'];
@@ -1475,7 +1399,13 @@ const Settings: React.FC = () => {
     setSavingUser(false);
   };
 
-  const filteredCategories = categories.filter(c => (c as any).tipo === activeTab);
+  const activePresetList = activeTab === 'receita' ? PRESET_REVENUE_CATEGORIES : PRESET_EXPENSE_CATEGORIES;
+  const selectedForTab = activeTab === 'receita' ? selectedRevenueCategories : selectedExpenseCategories;
+  const selectedPresetSet = useMemo(
+    () => new Set(selectedForTab.map((name) => normalizeCategoryName(name))),
+    [selectedForTab]
+  );
+
   const filteredCustomers = useMemo(() => {
     const term = customerSearch.trim().toLowerCase();
     const list = [...customers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -1541,12 +1471,6 @@ const Settings: React.FC = () => {
           className={`px-4 py-2 rounded-lg text-sm font-medium border ${section === 'clientes' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
         >
           Clientes
-        </button>
-        <button
-          onClick={() => setSectionAndUrl('procedimentos')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium border ${section === 'procedimentos' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
-        >
-          Procedimentos
         </button>
         <button
           onClick={() => setSectionAndUrl('profissionais')}
@@ -1665,86 +1589,73 @@ const Settings: React.FC = () => {
             </button>
           </div>
 
-          <div className="p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <p className="text-sm text-gray-500">Cadastre categorias individualmente ou importe via CSV.</p>
+          <div className="p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Selecione as categorias padrão que ficarão disponíveis nos lançamentos de {activeTab === 'receita' ? 'receitas' : 'despesas'}.
+                </p>
+                <p className="text-xs text-amber-600">
+                  Ao salvar, as categorias não selecionadas deixam de aparecer nas novas vendas/despesas.
+                </p>
+              </div>
               <div className="flex flex-wrap gap-2">
-                <a
-                  href={`data:text/csv;charset=utf-8,${encodeURIComponent(`nome,tipo\nCategoria ${activeTab === 'receita' ? 'Receita' : 'Despesa'},${activeTab}`)}`}
-                  download={`modelo_categorias_${activeTab}.csv`}
-                  className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg flex items-center gap-2"
-                >
-                  <Download size={14}/> Modelo CSV
-                </a>
                 <button
                   type="button"
-                  onClick={() => downloadCategoriesCsv(filteredCategories, activeTab)}
-                  className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg flex items-center gap-2"
+                  onClick={selectAllCategories}
+                  className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg"
                 >
-                  <Download size={14}/> Baixar CSV
+                  Selecionar todas
                 </button>
-                <label className={`px-3 py-2 text-sm bg-brand-600 text-white rounded-lg flex items-center gap-2 cursor-pointer hover:bg-brand-700 ${categoryImporting ? 'opacity-60 pointer-events-none' : ''}`}>
-                  <Upload size={14}/> {categoryImporting ? 'Importando...' : 'Importar CSV'}
-                  <input
-                    type="file"
-                    accept=".csv,text/csv"
-                    className="hidden"
-                    onChange={async (e) => {
-                      if (!e.target.files?.length) return;
-                      await handleImportCategories(e.target.files[0]);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
+                <button
+                  type="button"
+                  onClick={clearAllCategories}
+                  className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg"
+                >
+                  Limpar
+                </button>
+                <button
+                  type="button"
+                  onClick={saveCategorySelection}
+                  disabled={savingCategories}
+                  className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {savingCategories ? 'Salvando...' : 'Salvar seleção'}
+                </button>
               </div>
             </div>
-            <form onSubmit={handleAddCategory} className="flex gap-3 mb-8">
-              <div className="relative flex-1">
-                <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  placeholder={`Nova categoria de ${activeTab}...`}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-              <button 
-                type="submit" 
-                disabled={adding || !newName.trim()}
-                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
-              >
-                {adding ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                {editingCategoryId ? 'Atualizar' : 'Adicionar'}
-              </button>
-            </form>
+
+            <div className="text-xs text-gray-500">
+              Selecionadas: {selectedForTab.length} de {activePresetList.length}
+            </div>
 
             {loading ? (
               <div className="text-center py-8 text-gray-400">Carregando...</div>
             ) : (
-              <ul className="divide-y divide-gray-100">
-                {filteredCategories.map(cat => (
-                  <li key={cat.id} className="py-3 flex items-center justify-between hover:bg-gray-50 px-2 rounded-lg -mx-2 transition-colors">
-                    <span className="font-medium text-gray-700">{cat.name}</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => { setEditingCategoryId(cat.id); setNewName(cat.name); }}
-                        className="text-xs text-gray-500 hover:text-brand-600"
-                      >
-                        Editar
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-                {filteredCategories.length === 0 && (
-                  <li className="text-center py-8 text-gray-400 italic">Nenhuma categoria cadastrada.</li>
-                )}
-              </ul>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {activePresetList.map((name) => {
+                  const checked = selectedPresetSet.has(normalizeCategoryName(name));
+                  const activeStyle = activeTab === 'receita'
+                    ? 'border-brand-200 bg-brand-50'
+                    : 'border-rose-200 bg-rose-50';
+                  return (
+                    <label
+                      key={name}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm cursor-pointer transition ${
+                        checked ? activeStyle : 'border-gray-200'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleCategorySelection(name)}
+                        className="h-4 w-4 text-brand-600 border-gray-300 rounded"
+                      />
+                      <span className="text-gray-700">{name}</span>
+                    </label>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -2134,371 +2045,6 @@ const Settings: React.FC = () => {
         </div>
       )}
 
-
-      {/* Procedimentos */}
-      {section === 'procedimentos' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2"><CheckSquare size={16}/> Procedimentos realizados</h2>
-              <p className="text-sm text-gray-500">Cadastre procedimentos individualmente ou importe via CSV.</p>
-            </div>
-            <div className="flex gap-2">
-              <a
-                href={`data:text/csv;charset=utf-8,${encodeURIComponent('#,Categoria,Procedimento,Custo insumo,Tempo (min),Valor cobrado\n1,Consulta,Consulta Geral,50,30,200')}`}
-                download="modelo_procedimentos.csv"
-                className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg flex items-center gap-2"
-              >
-                <Download size={14}/> Modelo CSV
-              </a>
-              <label className={`px-3 py-2 text-sm bg-brand-600 text-white rounded-lg flex items-center gap-2 cursor-pointer hover:bg-brand-700 ${uploadingCsv ? 'opacity-60 pointer-events-none' : ''}`}>
-                <Upload size={14}/> {uploadingCsv ? 'Importando...' : 'Importar CSV'}
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={async (e) => {
-                    if (!e.target.files?.length) return;
-                    if (!clinicId) { alert('Nenhuma clínica ativa para importar procedimentos.'); return; }
-                    const file = e.target.files[0];
-                    setUploadingCsv(true);
-                    try {
-                      const text = await decodeCsvFile(file);
-                      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-                      if (!lines.length) throw new Error('Arquivo vazio');
-
-                      // Detecta separador por frequência
-                      const first = lines[0];
-                      const commaCount = (first.match(/,/g) || []).length;
-                      const semicolonCount = (first.match(/;/g) || []).length;
-                      const separator = semicolonCount > commaCount ? ';' : ',';
-
-                      const parseLine = (line: string) => {
-                        const out: string[] = [];
-                        let current = '';
-                        let insideQuotes = false;
-                        for (let i = 0; i < line.length; i++) {
-                          const ch = line[i];
-                          if (ch === '"') {
-                            // alterna estado de aspas
-                            insideQuotes = !insideQuotes;
-                            continue;
-                          }
-                          if (ch === separator && !insideQuotes) {
-                            out.push(current);
-                            current = '';
-                          } else {
-                            current += ch;
-                          }
-                        }
-                        out.push(current);
-                        return out.map(s => s.trim());
-                      };
-
-                      const header = parseLine(first).map(h => h.toLowerCase());
-                      const hasHeader = header.some(h => h.includes('procedimento') || h.includes('categoria'));
-                      const dataLines = hasHeader ? lines.slice(1) : lines;
-
-                      // mapa de colunas: modelo esperado "#,Categoria,Procedimento,Custo insumo,Tempo (min),Valor cobrado"
-                      const findIdx = (needle: string[]) => {
-                        const idx = header.findIndex(h => needle.some(n => h.includes(n)));
-                        return idx >= 0 ? idx : -1;
-                      };
-                      const idxCategoria = hasHeader ? findIdx(['categoria']) : -1;
-                      const idxProcedimento = hasHeader ? findIdx(['procedimento']) : -1;
-                      const idxCusto = hasHeader ? findIdx(['custo']) : -1;
-                      const idxTempo = hasHeader ? findIdx(['tempo']) : -1;
-                      const idxValor = hasHeader ? findIdx(['valor']) : -1;
-
-                      const payload = dataLines.map(r => {
-                        const cols = parseLine(r);
-                        // fallback: se vier sem cabeçalho, assume posição com possível coluna "#" na frente
-                        const shift = !hasHeader && cols.length >= 6 ? 1 : 0;
-
-                        const valToNumber = (v?: string | null) => {
-                          if (v === undefined || v === null || v === '') return null;
-                          const normalized = v.replace(/\./g, '').replace(',', '.');
-                          const num = Number(normalized);
-                          return Number.isFinite(num) ? num : null;
-                        };
-
-                        const pick = (idxHeader: number, fallback: number) => {
-                          const idx = idxHeader >= 0 ? idxHeader : fallback;
-                          return cols[idx] ?? '';
-                        };
-
-                        const categoria = pick(idxCategoria, shift + 0);
-                        const procedimento = pick(idxProcedimento, shift + 1);
-                        const custo = pick(idxCusto, shift + 2);
-                        const tempo = pick(idxTempo, shift + 3);
-                        const valor = pick(idxValor, shift + 4);
-
-                        return {
-                          categoria: categoria || null,
-                          procedimento: procedimento || '',
-                          custo_insumo: valToNumber(custo),
-                          tempo_minutos: valToNumber(tempo),
-                          valor_cobrado: valToNumber(valor),
-                          clinic_id: clinicId,
-                        };
-                      }).filter(p => p.procedimento);
-                      if (payload.length) {
-                        const { error } = await supabase.from('procedures').insert(payload);
-                        if (error) throw error;
-                        fetchProcedures();
-                      } else {
-                        alert('Nenhuma linha válida encontrada no CSV.');
-                      }
-                    } catch (err: any) {
-                      alert('Erro ao importar CSV: ' + err.message);
-                    } finally {
-                      setUploadingCsv(false);
-                      e.target.value = '';
-                    }
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row flex-wrap gap-2 justify-between items-stretch sm:items-center">
-            <input
-              type="text"
-              value={procedureSearch}
-              onChange={e => setProcedureSearch(e.target.value)}
-              placeholder="Buscar procedimento..."
-              className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 flex-1 min-w-[180px]"
-            />
-            <button
-              onClick={async () => {
-                if (!selectedProcedures.length) return;
-                if (!confirm('Apagar procedimentos selecionados?')) return;
-                const { error } = await supabase.from('procedures').delete().in('id', selectedProcedures);
-                if (!error) {
-                  setSelectedProcedures([]);
-                  fetchProcedures();
-                }
-              }}
-              className="w-full sm:w-auto px-4 py-2 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm mr-2 disabled:opacity-50"
-              disabled={!selectedProcedures.length}
-            >
-              Apagar selecionados
-            </button>
-            <button
-              onClick={() => { setEditingProcedureId(null); setProcedureForm({ categoria: '', procedimento: '', valor_cobrado: '', custo_insumo: '', tempo_minutos: '' }); setShowProcedureModal(true); }}
-              className="w-full sm:w-auto px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 flex items-center justify-center gap-2"
-            >
-              <Plus size={16}/> Novo procedimento
-            </button>
-          </div>
-
-          <div className="border border-gray-100 rounded-lg table-scroll">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600 border-b">
-                <tr>
-                  <th className="px-4 py-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedProcedures.length > 0 && selectedProcedures.length === procedures.length}
-                      onChange={e => {
-                        if (e.target.checked) setSelectedProcedures(procedures.map(p => p.id));
-                        else setSelectedProcedures([]);
-                      }}
-                    />
-                  </th>
-                  <th className="px-4 py-2 text-left">#</th>
-                  <th className="px-4 py-2 text-left">Categoria</th>
-                  <th className="px-4 py-2 text-left">Procedimento</th>
-                  <th className="px-4 py-2 text-left">Custo insumo</th>
-                  <th className="px-4 py-2 text-left">Tempo (min)</th>
-                  <th className="px-4 py-2 text-left">Valor cobrado</th>
-                  <th className="px-4 py-2 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {procedures
-                  .filter(p => p.procedimento?.toLowerCase().includes(procedureSearch.toLowerCase()))
-                  .map((p, idx) => {
-                  const selected = selectedProcedures.includes(p.id);
-                  return (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={e => {
-                          if (e.target.checked) setSelectedProcedures(prev => [...prev, p.id]);
-                          else setSelectedProcedures(prev => prev.filter(id => id !== p.id));
-                        }}
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-gray-700">{idx + 1}</td>
-                    <td className="px-4 py-2 text-gray-700">{p.categoria || '-'}</td>
-                    <td className="px-4 py-2 font-semibold text-gray-800">{p.procedimento}</td>
-                    <td className="px-4 py-2 text-gray-700">{p.custo_insumo ?? '-'}</td>
-                    <td className="px-4 py-2 text-gray-700">{p.tempo_minutos ?? '-'}</td>
-                    <td className="px-4 py-2 text-gray-700">{p.valor_cobrado ?? '-'}</td>
-                    <td className="px-4 py-2 text-right">
-                      <button
-                        onClick={() => {
-                          setEditingProcedureId(p.id);
-                          setProcedureForm({
-                            categoria: p.categoria || '',
-                            procedimento: p.procedimento || '',
-                            valor_cobrado: p.valor_cobrado || '',
-                            custo_insumo: p.custo_insumo || '',
-                            tempo_minutos: p.tempo_minutos || '',
-                          });
-                          setShowProcedureModal(true);
-                        }}
-                        className="text-brand-600 text-sm mr-3"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!confirm('Excluir procedimento?')) return;
-                          const { error } = await supabase.from('procedures').delete().eq('id', p.id);
-                          if (!error) fetchProcedures();
-                        }}
-                        className="text-red-600 text-sm"
-                      >
-                        Apagar
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })}
-                {procedures.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum procedimento cadastrado.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {showProcedureModal && (
-            <div
-              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-              onClick={procedureModalControls.onBackdropClick}
-            >
-              <div
-                className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-2xl space-y-4"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-semibold text-gray-800">{editingProcedureId ? 'Editar procedimento' : 'Novo procedimento'}</h4>
-                  <button
-                    onClick={closeProcedureModal}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <form
-                  onSubmit={async (ev) => {
-                    ev.preventDefault();
-                    if (!procedureForm.procedimento.trim()) return;
-                    if (!clinicId) { alert('Nenhuma clínica ativa para salvar procedimento.'); return; }
-                    setSavingProcedure(true);
-                    try {
-                      const payload = {
-                        categoria: procedureForm.categoria || null,
-                        procedimento: procedureForm.procedimento,
-                        valor_cobrado: procedureForm.valor_cobrado ? Number(procedureForm.valor_cobrado) : null,
-                        custo_insumo: procedureForm.custo_insumo ? Number(procedureForm.custo_insumo) : null,
-                        tempo_minutos: procedureForm.tempo_minutos ? Number(procedureForm.tempo_minutos) : null,
-                        clinic_id: clinicId,
-                      };
-                      if (editingProcedureId) {
-                        const { error } = await supabase.from('procedures').update(payload).eq('id', editingProcedureId);
-                        if (error) throw error;
-                      } else {
-                        const { error } = await supabase.from('procedures').insert([payload]);
-                        if (error) throw error;
-                      }
-                      setProcedureForm({ categoria: '', procedimento: '', valor_cobrado: '', custo_insumo: '', tempo_minutos: '' });
-                      setEditingProcedureId(null);
-                      setShowProcedureModal(false);
-                      fetchProcedures();
-                    } catch (err: any) {
-                      alert('Erro ao salvar procedimento: ' + err.message);
-                    } finally {
-                      setSavingProcedure(false);
-                    }
-                  }}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                >
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                    <input
-                      value={procedureForm.categoria}
-                      onChange={e => setProcedureForm({ ...procedureForm, categoria: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                      placeholder="Ex: Consulta"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Procedimento</label>
-                    <input
-                      required
-                      value={procedureForm.procedimento}
-                      onChange={e => setProcedureForm({ ...procedureForm, procedimento: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                      placeholder="Nome do procedimento"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor cobrado</label>
-                    <input
-                      type="number"
-                      value={procedureForm.valor_cobrado}
-                      onChange={e => setProcedureForm({ ...procedureForm, valor_cobrado: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Custo insumo</label>
-                    <input
-                      type="number"
-                      value={procedureForm.custo_insumo}
-                      onChange={e => setProcedureForm({ ...procedureForm, custo_insumo: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tempo (min)</label>
-                    <input
-                      type="number"
-                      value={procedureForm.tempo_minutos}
-                      onChange={e => setProcedureForm({ ...procedureForm, tempo_minutos: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                    />
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setShowProcedureModal(false); setEditingProcedureId(null); }}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={savingProcedure}
-                      className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {savingProcedure ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                      {editingProcedureId ? 'Atualizar' : 'Salvar'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Profissionais */}
       {section === 'profissionais' && (

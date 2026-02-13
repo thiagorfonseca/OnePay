@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TransactionTypeEnum } from './types';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './src/auth/AuthProvider';
@@ -69,6 +70,7 @@ const AdminODContractForm = lazy(() => import('./pages/AdminODContractForm'));
 const AdminODProposals = lazy(() => import('./pages/AdminODProposals'));
 const AdminODProposalForm = lazy(() => import('./pages/AdminODProposalForm'));
 const AdminODProposalDetail = lazy(() => import('./pages/AdminODProposalDetail'));
+const AdminCommercialReports = lazy(() => import('./pages/AdminCommercialReports'));
 const PublicProposalForm = lazy(() => import('./pages/PublicProposalForm'));
 const PublicSignatureReturn = lazy(() => import('./pages/PublicSignatureReturn'));
 const PublicPaymentPage = lazy(() => import('./pages/PublicPaymentPage'));
@@ -344,11 +346,13 @@ function App() {
               <Route path="propostas" element={<AdminODProposals />} />
               <Route path="propostas/nova" element={<AdminODProposalForm />} />
               <Route path="propostas/:id" element={<AdminODProposalDetail />} />
+              <Route path="comercial/relatorios" element={<AdminCommercialReports />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
           <Analytics />
+          <SpeedInsights />
         </Suspense>
       </AuthProvider>
     </Router>

@@ -33,6 +33,18 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
 
   const startLabel = new Date(event.start_at).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' });
   const endLabel = new Date(event.end_at).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' });
+  const normalizeStatus = (value?: string | null) => (value || '').toLowerCase();
+  const resolveStatusBadge = (value?: string | null) => {
+    const normalized = normalizeStatus(value);
+    if (normalized === 'confirmed') {
+      return { label: 'CONFIRMADO', className: 'bg-emerald-200 text-gray-900' };
+    }
+    if (normalized === 'pending' || normalized === 'pending_confirmation') {
+      return { label: 'PENDENTE', className: 'bg-rose-100 text-rose-800' };
+    }
+    return { label: value || '-', className: 'bg-gray-100 text-gray-600' };
+  };
+  const eventStatusBadge = resolveStatusBadge(event.status);
 
   return (
     <div
@@ -46,7 +58,12 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-xl font-semibold text-gray-800">{event.title}</h3>
-            <p className="text-xs text-gray-500">Status: {event.status}</p>
+            <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+              <span>Status:</span>
+              <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${eventStatusBadge.className}`}>
+                {eventStatusBadge.label}
+              </span>
+            </div>
           </div>
           <button
             type="button"
@@ -93,12 +110,17 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
               <Users size={16} /> Clínicas participantes
             </div>
             <div className="space-y-2">
-              {attendees.map((att) => (
-                <div key={`${att.event_id}-${att.clinic_id}`} className="flex items-center justify-between text-sm text-gray-600">
-                  <span>{att.clinic?.name || att.clinic_id}</span>
-                  <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{att.confirm_status}</span>
-                </div>
-              ))}
+              {attendees.map((att) => {
+                const badge = resolveStatusBadge(att.confirm_status);
+                return (
+                  <div key={`${att.event_id}-${att.clinic_id}`} className="flex items-center justify-between text-sm text-gray-600">
+                    <span>{att.clinic?.name || att.clinic_id}</span>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${badge.className}`}>
+                      {badge.label}
+                    </span>
+                  </div>
+                );
+              })}
               {attendees.length === 0 && (
                 <p className="text-xs text-gray-400">Nenhuma clínica vinculada.</p>
               )}

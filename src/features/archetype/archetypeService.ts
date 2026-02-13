@@ -100,7 +100,7 @@ export const fetchRespondents = async (filters: {
 export const fetchRespondentDetail = async (id: string, clinicId: string) => {
   const { data, error } = await supabase
     .from('archetype_respondents')
-    .select('*, archetype_answers (question_id, selected_word, scored_profile)')
+    .select('*')
     .eq('clinic_id', clinicId)
     .eq('id', id)
     .single();

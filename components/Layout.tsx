@@ -261,7 +261,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <nav className="flex-1 px-4 pt-8 pb-6 space-y-1 overflow-y-auto">
             {filteredNavigation.map((item) => {
               const isParentActive = openParentForActive[item.name];
-              const isExpanded = hasManualExpand ? !!expanded[item.name] : (expanded[item.name] ?? isParentActive);
+              const isComercial = item.name === 'Comercial';
+              const isExpanded = isComercial
+                ? (isActive(item.href) || (item.children?.some(child => isActive(child.href)) ?? false))
+                : (hasManualExpand ? !!expanded[item.name] : (expanded[item.name] ?? isParentActive));
               const hasChildren = !!(item.children && item.children.length);
               const isConfig = item.name === 'Minha Clínica';
               const isFinanceiro = item.name === 'Financeiro';
@@ -271,7 +274,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const parentHref = hasPageAccess(item.href) ? item.href : (item.children?.[0]?.href || item.href);
               return (
                 <div key={item.name}>
-                  {hasChildren && (isConfig || isFinanceiro) ? (
+                  {hasChildren && (isConfig || isFinanceiro || isComercial) ? (
                     <div className={`
                       flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                       ${isActive(item.href) 
@@ -285,7 +288,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <item.icon size={20} />
                         {!isCollapsed && <span>{item.name}</span>}
                       </Link>
-                      {!isCollapsed && (
+                      {!isCollapsed && !isComercial && (
                         <button onClick={() => toggleExpand(item.name)} className="text-gray-500 hover:text-gray-700">
                           {isExpanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
                         </button>

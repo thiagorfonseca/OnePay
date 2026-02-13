@@ -3,7 +3,7 @@ import { Download, Maximize2, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useAuth } from '../../../auth/AuthProvider';
 import { fetchRespondentDetail, fetchRespondents, listPublicLinks } from '../archetypeService';
-import type { ArchetypeAnswerRow, ArchetypeRespondentRow, PublicLinkRow } from '../types';
+import type { ArchetypeRespondentRow, PublicLinkRow } from '../types';
 import FiltersBar, { ArchetypeFilters } from '../components/FiltersBar';
 import RespondentsTable from '../components/RespondentsTable';
 import DetailsDrawer from '../components/DetailsDrawer';
@@ -40,7 +40,6 @@ const AnalyticsArchetypePage: React.FC = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailRespondent, setDetailRespondent] = useState<ArchetypeRespondentRow | null>(null);
-  const [detailAnswers, setDetailAnswers] = useState<ArchetypeAnswerRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPieExpanded, setIsPieExpanded] = useState(false);
   const [isBarExpanded, setIsBarExpanded] = useState(false);
@@ -215,12 +214,10 @@ const AnalyticsArchetypePage: React.FC = () => {
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailRespondent(row);
-    setDetailAnswers([]);
     try {
       const detail = await fetchRespondentDetail(row.id, clinicId);
       if (!detail) return;
       setDetailRespondent(detail as ArchetypeRespondentRow);
-      setDetailAnswers(((detail as any).archetype_answers || []) as ArchetypeAnswerRow[]);
     } catch (err) {
       console.error(err);
       setError('Não foi possível carregar os detalhes do respondente.');
@@ -236,7 +233,6 @@ const AnalyticsArchetypePage: React.FC = () => {
   if (!clinicId) {
     return (
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-800">Arquétipos</h1>
         <p className="text-sm text-gray-500">Selecione uma clínica para visualizar os dados.</p>
       </div>
     );
@@ -244,13 +240,9 @@ const AnalyticsArchetypePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Arquétipos</h1>
-        <p className="text-gray-500">Recursos Humanos • Analytics de perfis comportamentais</p>
-        {isSystemAdmin && (
-          <p className="text-xs text-gray-400">Visualizando dados da clínica selecionada.</p>
-        )}
-      </div>
+      {isSystemAdmin && (
+        <p className="text-xs text-gray-400">Visualizando dados da clínica selecionada.</p>
+      )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
@@ -586,7 +578,6 @@ const AnalyticsArchetypePage: React.FC = () => {
         loading={detailLoading}
         onClose={() => setDetailOpen(false)}
         respondent={detailRespondent}
-        answers={detailAnswers}
       />
     </div>
   );

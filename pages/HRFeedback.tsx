@@ -578,20 +578,20 @@ const HRFeedback: React.FC = () => {
         ) : (
           <div className="divide-y divide-gray-100">
             <div className="px-6 py-3 border-b border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide hidden md:block">
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4 min-w-0">
                 <div className="w-10">#</div>
-                <div className="min-w-[200px]">Colaborador</div>
-                <div className="min-w-[160px]">Data</div>
-                <div className="min-w-[160px]">Tipo</div>
-                <div className="min-w-[160px]">Resultado</div>
+                <div className="min-w-[200px] max-w-[240px] truncate">Colaborador</div>
+                <div className="min-w-[160px] max-w-[200px] truncate">Data</div>
+                <div className="min-w-[160px] max-w-[200px] truncate">Tipo</div>
+                <div className="min-w-[160px] max-w-[220px] truncate">Resultado</div>
                 <div className="min-w-[80px] text-center">Nota</div>
                 <div className="ml-auto">Ações</div>
               </div>
             </div>
             {filteredFeedbacks.map((fb: any, idx: number) => (
-              <div key={fb.id} className="px-4 sm:px-6 py-4 flex flex-col md:flex-row md:flex-wrap md:items-center gap-4 hover:bg-gray-50">
+              <div key={fb.id} className="px-4 sm:px-6 py-4 flex flex-col md:flex-row md:flex-wrap md:items-center gap-4 hover:bg-gray-50 min-w-0">
                 <div className="w-10 text-sm text-gray-400">#{String(idx + 1).padStart(2, '0')}</div>
-                <div className="flex items-center gap-3 md:min-w-[200px]">
+                <div className="flex items-center gap-3 md:min-w-[200px] md:max-w-[240px] min-w-0">
                   {fb.subject?.avatar_url ? (
                     <img src={fb.subject.avatar_url} alt={fb.subject.name} className="w-9 h-9 rounded-full object-cover" />
                   ) : (
@@ -599,14 +599,14 @@ const HRFeedback: React.FC = () => {
                       {getInitials(fb.subject?.name || fb.subject?.email || 'CL')}
                     </div>
                   )}
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{fb.subject?.name || fb.subject?.email}</p>
-                    <p className="text-xs text-gray-500">{fb.department?.name || 'Sem departamento'}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{fb.subject?.name || fb.subject?.email}</p>
+                    <p className="text-xs text-gray-500 truncate">{fb.department?.name || 'Sem departamento'}</p>
                   </div>
                 </div>
-                <div className="md:min-w-[160px] text-sm text-gray-700">{formatDate(fb.feedback_date)}</div>
-                <div className="md:min-w-[160px] text-sm text-gray-700">{fb.feedback_type || 'Não informado'}</div>
-                <div className="md:min-w-[160px] text-sm text-gray-500">{fb.result || 'Não informado'}</div>
+                <div className="md:min-w-[160px] md:max-w-[200px] min-w-0 text-sm text-gray-700 truncate">{formatDate(fb.feedback_date)}</div>
+                <div className="md:min-w-[160px] md:max-w-[200px] min-w-0 text-sm text-gray-700 truncate">{fb.feedback_type || 'Não informado'}</div>
+                <div className="md:min-w-[160px] md:max-w-[220px] min-w-0 text-sm text-gray-500 truncate">{fb.result || 'Não informado'}</div>
                 <div className="md:min-w-[80px] flex justify-start md:justify-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${scoreBubbleClass(fb.score_management ?? fb.score_personal)}`}>
                     {fb.score_management ?? fb.score_personal ?? '--'}

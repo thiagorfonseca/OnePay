@@ -26,6 +26,17 @@ const formatMonthYear = (value: Date) => {
 };
 
 const ClinicAgenda: React.FC = () => {
+  const normalizeStatus = (value?: string | null) => (value || '').toLowerCase();
+  const resolveStatusBadge = (value?: string | null) => {
+    const normalized = normalizeStatus(value);
+    if (normalized === 'confirmed') {
+      return { label: 'CONFIRMADO', className: 'bg-emerald-200 text-gray-900' };
+    }
+    if (normalized === 'pending' || normalized === 'pending_confirmation') {
+      return { label: 'PENDENTE', className: 'bg-rose-100 text-rose-800' };
+    }
+    return { label: value || '-', className: 'bg-gray-100 text-gray-600' };
+  };
   const { effectiveClinicId: clinicId, clinic } = useAuth();
   const calendarRef = useRef<FullCalendar | null>(null);
   const { toasts, push, dismiss } = useToast();
@@ -254,7 +265,12 @@ const ClinicAgenda: React.FC = () => {
               >
                 <div className="text-sm font-semibold text-gray-800">{event.title}</div>
                 <div className="text-xs text-gray-500">{toLocalLabel(event.start_at)} • {toLocalLabel(event.end_at)}</div>
-                <div className="text-xs mt-1 text-gray-400">Status: {event.confirm_status}</div>
+                <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                  <span>Status:</span>
+                  <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${resolveStatusBadge(event.confirm_status).className}`}>
+                    {resolveStatusBadge(event.confirm_status).label}
+                  </span>
+                </div>
               </button>
             ))}
           </div>

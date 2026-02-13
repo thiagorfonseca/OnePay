@@ -25,7 +25,6 @@ const PAGE_OPTIONS = [
   { value: '/settings?section=categorias', label: 'Minha Clínica • Categorias' },
   { value: '/settings?section=taxas', label: 'Minha Clínica • Taxas' },
   { value: '/settings?section=clientes', label: 'Minha Clínica • Clientes' },
-  { value: '/settings?section=procedimentos', label: 'Minha Clínica • Procedimentos' },
   { value: '/settings?section=profissionais', label: 'Minha Clínica • Profissionais' },
   { value: '/settings?section=fornecedores', label: 'Minha Clínica • Fornecedores' },
   { value: '/settings?section=usuarios', label: 'Minha Clínica • Usuários' },
