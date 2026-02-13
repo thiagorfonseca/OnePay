@@ -39,7 +39,10 @@ const PublicPaymentPage: React.FC = () => {
   }
 
   const invoiceUrl = data?.invoiceUrl || data?.payment?.invoice_url || '';
+  const signatureUrl = data?.signatureUrl || '';
   const status = data?.status || data?.payment?.status || 'aguardando';
+  const requiresSignature = Boolean(data?.proposal?.requires_signature);
+  const isSigned = status === 'signed' || status === 'paid' || status === 'payment_created';
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -57,7 +60,20 @@ const PublicPaymentPage: React.FC = () => {
           </>
         )}
 
-        {!data?.error && invoiceUrl ? (
+        {!data?.error && requiresSignature && !isSigned ? (
+          signatureUrl ? (
+            <a
+              href={signatureUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700"
+            >
+              Assinar contrato
+            </a>
+          ) : (
+            <div className="text-sm text-gray-400">Assinatura pendente. Aguarde o link.</div>
+          )
+        ) : !data?.error && invoiceUrl ? (
           <a
             href={invoiceUrl}
             target="_blank"

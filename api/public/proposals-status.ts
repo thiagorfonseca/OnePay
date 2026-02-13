@@ -123,6 +123,7 @@ export default async function handler(req: any, res: any) {
 
     let payment: any = null;
     let invoiceUrl: string | null = null;
+    let signatureUrl: string | null = null;
 
     if (proposal.status === 'signed' || proposal.status === 'payment_created' || proposal.status === 'paid') {
       const ensured = await ensurePaymentForProposal(proposal);
@@ -142,11 +143,27 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    if (proposal.requires_signature && !['signed', 'paid', 'payment_created'].includes(proposal.status)) {
+      const { data: doc } = await supabaseAdmin
+        .from('od_zapsign_documents')
+        .select('raw')
+        .eq('proposal_id', proposal.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      signatureUrl =
+        doc?.raw?.signers?.[0]?.url ||
+        doc?.raw?.signer_url ||
+        doc?.raw?.url ||
+        null;
+    }
+
     return json(res, 200, {
       status: proposal.status,
       proposal,
       payment,
       invoiceUrl,
+      signatureUrl,
     });
   } catch (err: any) {
     console.error(err);
