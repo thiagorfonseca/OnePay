@@ -53,11 +53,27 @@ const PublicProposalForm: React.FC = () => {
     const trimmed = trimValue(value);
     return trimmed.length ? trimmed : null;
   };
+  const isCpfValid = (value: string) => {
+    const cpf = digitsOnly(value);
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1+$/.test(cpf)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i += 1) sum += Number(cpf[i]) * (10 - i);
+    let check = (sum * 10) % 11;
+    if (check === 10) check = 0;
+    if (check !== Number(cpf[9])) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i += 1) sum += Number(cpf[i]) * (11 - i);
+    check = (sum * 10) % 11;
+    if (check === 10) check = 0;
+    return check === Number(cpf[10]);
+  };
 
   const isStep1Valid = useMemo(() => {
+    const cpfOk = personType === 'pf' ? isCpfValid(form.company.cnpj) : digitsOnly(form.company.cnpj).length >= 8;
     return (
       hasValue(form.company.legal_name) &&
-      digitsOnly(form.company.cnpj).length >= 8 &&
+      cpfOk &&
       isEmail(form.company.email_principal) &&
       hasValue(form.company.whatsapp) &&
       hasValue(form.company.address.logradouro) &&
@@ -72,7 +88,7 @@ const PublicProposalForm: React.FC = () => {
   const isStep2Valid = useMemo(() => {
     return (
       hasValue(form.responsible.name) &&
-      digitsOnly(form.responsible.cpf).length >= 8 &&
+      isCpfValid(form.responsible.cpf) &&
       isEmail(form.responsible.email) &&
       hasValue(form.responsible.telefone)
     );
@@ -339,6 +355,9 @@ const PublicProposalForm: React.FC = () => {
                 onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, cnpj: e.target.value } }))}
                 className="px-3 py-2 border border-gray-200 rounded-lg"
               />
+              {personType === 'pf' && digitsOnly(form.company.cnpj).length >= 11 && !isCpfValid(form.company.cnpj) ? (
+                <div className="text-xs text-rose-500 md:col-span-2">CPF Invalido</div>
+              ) : null}
               {personType === 'pj' ? (
                 <input
                   placeholder="Inscrição estadual"
@@ -361,6 +380,19 @@ const PublicProposalForm: React.FC = () => {
                 onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, whatsapp: e.target.value } }))}
                 className="px-3 py-2 border border-gray-200 rounded-lg"
               />
+              <input
+                placeholder="CEP"
+                value={form.company.address.cep}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    company: { ...prev.company, address: { ...prev.company.address, cep: e.target.value } },
+                  }))
+                }
+                className="px-3 py-2 border border-gray-200 rounded-lg"
+              />
+              {cepLoading ? <div className="text-xs text-gray-400 md:col-span-2">Buscando CEP...</div> : null}
+              {cepError ? <div className="text-xs text-rose-500 md:col-span-2">{cepError}</div> : null}
               <input
                 placeholder="Logradouro"
                 value={form.company.address.logradouro}
@@ -427,19 +459,6 @@ const PublicProposalForm: React.FC = () => {
                 }
                 className="px-3 py-2 border border-gray-200 rounded-lg"
               />
-              <input
-                placeholder="CEP"
-                value={form.company.address.cep}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    company: { ...prev.company, address: { ...prev.company.address, cep: e.target.value } },
-                  }))
-                }
-                className="px-3 py-2 border border-gray-200 rounded-lg"
-              />
-              {cepLoading ? <div className="text-xs text-gray-400 md:col-span-2">Buscando CEP...</div> : null}
-              {cepError ? <div className="text-xs text-rose-500 md:col-span-2">{cepError}</div> : null}
             </div>
           )}
 
@@ -467,6 +486,9 @@ const PublicProposalForm: React.FC = () => {
                 disabled={sameAsCompany}
                 className="px-3 py-2 border border-gray-200 rounded-lg disabled:bg-gray-100"
               />
+              {!sameAsCompany && digitsOnly(form.responsible.cpf).length >= 11 && !isCpfValid(form.responsible.cpf) ? (
+                <div className="text-xs text-rose-500 md:col-span-2">CPF Invalido</div>
+              ) : null}
               <input
                 placeholder="Email"
                 value={form.responsible.email}
