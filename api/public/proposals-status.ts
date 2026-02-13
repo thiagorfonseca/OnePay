@@ -168,9 +168,19 @@ export default async function handler(req: any, res: any) {
         doc?.raw?.url ||
         null;
 
-      if (doc?.zapsign_doc_id && ZAPSIGN_API_TOKEN) {
+      const docToken =
+        doc?.zapsign_doc_id ||
+        doc?.raw?.token ||
+        doc?.raw?.doc_id ||
+        doc?.raw?.id ||
+        doc?.raw?.docId ||
+        null;
+      if (docToken && ZAPSIGN_API_TOKEN) {
         try {
-          const fresh = await getDocument(ZAPSIGN_API_TOKEN, doc.zapsign_doc_id);
+          if (!doc?.zapsign_doc_id && docToken) {
+            await supabaseAdmin.from('od_zapsign_documents').update({ zapsign_doc_id: docToken }).eq('id', doc.id);
+          }
+          const fresh = await getDocument(ZAPSIGN_API_TOKEN, docToken);
           const freshSigner = fresh?.signers?.[0];
           const freshToken = freshSigner?.signer_token || freshSigner?.token;
           signatureUrl =

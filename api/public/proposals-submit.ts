@@ -179,7 +179,7 @@ const ensureSignature = async (proposal: any, payload: any) => {
     .from('od_zapsign_documents')
     .insert({
       proposal_id: proposal.id,
-      zapsign_doc_id: document.id || document.doc_id || document.docId,
+      zapsign_doc_id: document.token || document.id || document.doc_id || document.docId,
       status: 'sent',
       signer_email: payload.responsible.email,
       signer_name: payload.responsible.name,
