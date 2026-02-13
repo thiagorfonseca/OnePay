@@ -19,6 +19,7 @@ export type ZapsignCreateDocumentParams = {
 };
 
 const getApiBase = () => 'https://api.zapsign.com.br/api/v1';
+const buildSignerUrl = (token?: string | null) => (token ? `https://app.zapsign.com.br/verificar/${token}` : null);
 
 const request = async (path: string, token: string, options: RequestInit = {}) => {
   const res = await fetch(`${getApiBase()}${path}`, {
@@ -35,6 +36,13 @@ const request = async (path: string, token: string, options: RequestInit = {}) =
   if (!res.ok) {
     const message = data?.message || data?.detail || data?.error || 'Erro ao comunicar com ZapSign';
     throw new Error(message);
+  }
+  if (data?.signers && Array.isArray(data.signers)) {
+    data.signers = data.signers.map((signer: any) => {
+      const tokenValue = signer?.token || signer?.signer_token;
+      const signUrl = signer?.sign_url || signer?.url || buildSignerUrl(tokenValue);
+      return { ...signer, sign_url: signUrl };
+    });
   }
   return data;
 };

@@ -118,7 +118,14 @@ const ensureSignature = async (proposal: any, payload: any) => {
     redirectUrl: APP_BASE_URL ? `${APP_BASE_URL}/assinatura/retorno?token=${proposal.public_token}` : undefined,
   });
 
-  const signUrl = document?.signers?.[0]?.url || document?.url || null;
+  const signer = document?.signers?.[0];
+  const signerToken = signer?.signer_token || signer?.token;
+  const signUrl =
+    signer?.sign_url ||
+    signer?.url ||
+    (signerToken ? `https://app.zapsign.com.br/verificar/${signerToken}` : null) ||
+    document?.url ||
+    null;
 
   const { data: stored } = await supabaseAdmin
     .from('od_zapsign_documents')

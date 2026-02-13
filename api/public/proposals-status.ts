@@ -153,8 +153,12 @@ export default async function handler(req: any, res: any) {
         .limit(1)
         .maybeSingle();
 
+      const storedSigner = doc?.raw?.signers?.[0];
+      const storedToken = storedSigner?.signer_token || storedSigner?.token;
       signatureUrl =
-        doc?.raw?.signers?.[0]?.url ||
+        storedSigner?.sign_url ||
+        storedSigner?.url ||
+        (storedToken ? `https://app.zapsign.com.br/verificar/${storedToken}` : null) ||
         doc?.raw?.signer_url ||
         doc?.raw?.url ||
         null;
@@ -162,8 +166,12 @@ export default async function handler(req: any, res: any) {
       if (!signatureUrl && doc?.zapsign_doc_id && ZAPSIGN_API_TOKEN) {
         try {
           const fresh = await getDocument(ZAPSIGN_API_TOKEN, doc.zapsign_doc_id);
+          const freshSigner = fresh?.signers?.[0];
+          const freshToken = freshSigner?.signer_token || freshSigner?.token;
           signatureUrl =
-            fresh?.signers?.[0]?.url ||
+            freshSigner?.sign_url ||
+            freshSigner?.url ||
+            (freshToken ? `https://app.zapsign.com.br/verificar/${freshToken}` : null) ||
             fresh?.signer_url ||
             fresh?.url ||
             signatureUrl;
