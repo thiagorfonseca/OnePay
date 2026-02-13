@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TransactionTypeEnum } from './types';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './src/auth/AuthProvider';
@@ -349,6 +350,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
           <Analytics />
+          <SpeedInsights />
         </Suspense>
       </AuthProvider>
     </Router>
