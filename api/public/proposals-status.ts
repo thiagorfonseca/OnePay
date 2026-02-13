@@ -5,6 +5,11 @@ import { createPayment, ensureCustomer } from '../../src/lib/integrations/asaas.
 import { getDocument } from '../../src/lib/integrations/zapsign.js';
 
 const normalizeDoc = (value?: string | null) => (value || '').replace(/\D/g, '');
+const isSignedStatus = (value?: string | null) => {
+  if (!value) return false;
+  const raw = value.toLowerCase();
+  return raw.includes('signed') || raw.includes('assinado');
+};
 
 const pickBillingType = (methods: any) => {
   if (methods?.pix) return 'PIX';
@@ -163,7 +168,7 @@ export default async function handler(req: any, res: any) {
         doc?.raw?.url ||
         null;
 
-      if (!signatureUrl && doc?.zapsign_doc_id && ZAPSIGN_API_TOKEN) {
+      if (doc?.zapsign_doc_id && ZAPSIGN_API_TOKEN) {
         try {
           const fresh = await getDocument(ZAPSIGN_API_TOKEN, doc.zapsign_doc_id);
           const freshSigner = fresh?.signers?.[0];
@@ -175,11 +180,23 @@ export default async function handler(req: any, res: any) {
             fresh?.signer_url ||
             fresh?.url ||
             signatureUrl;
+          const allSigned =
+            isSignedStatus(fresh?.status) ||
+            (Array.isArray(fresh?.signers) && fresh.signers.length > 0
+              ? fresh.signers.every((signer: any) => isSignedStatus(signer?.status))
+              : false);
           if (signatureUrl) {
             await supabaseAdmin
               .from('od_zapsign_documents')
               .update({ raw: fresh })
               .eq('id', doc.id);
+          }
+          if (allSigned) {
+            await supabaseAdmin
+              .from('od_zapsign_documents')
+              .update({ status: 'signed', signed_at: new Date().toISOString(), raw: fresh })
+              .eq('id', doc.id);
+            await supabaseAdmin.from('od_proposals').update({ status: 'signed' }).eq('id', proposal.id);
           }
         } catch (err) {
           console.error(err);

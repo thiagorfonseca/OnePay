@@ -1,10 +1,20 @@
 import { z } from 'zod';
 import { readJson, json, methodNotAllowed, badRequest, notFound, serverError } from '../_utils/http.js';
 import { supabaseAdmin } from '../_utils/supabase.js';
-import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON, ZAPSIGN_API_TOKEN, APP_BASE_URL } from '../_utils/env.js';
+import {
+  ASAAS_API_KEY,
+  ASAAS_ENV,
+  ASAAS_SPLIT_WALLETS_JSON,
+  ZAPSIGN_API_TOKEN,
+  APP_BASE_URL,
+  ZAPSIGN_INTERNAL_SIGNER_NAME,
+  ZAPSIGN_INTERNAL_SIGNER_EMAIL,
+  ZAPSIGN_INTERNAL_SIGNER_CPF,
+  ZAPSIGN_INTERNAL_USER_TOKEN,
+} from '../_utils/env.js';
 import { applyContractTags } from '../_utils/contract.js';
 import { buildPdfFromHtml } from '../_utils/pdf.js';
-import { createDocumentFromBase64 } from '../../src/lib/integrations/zapsign.js';
+import { createDocumentFromBase64, signByUser } from '../../src/lib/integrations/zapsign.js';
 import { createPayment, ensureCustomer } from '../../src/lib/integrations/asaas.js';
 
 const payloadSchema = z.object({
@@ -73,9 +83,31 @@ const ensureSignature = async (proposal: any, payload: any) => {
     .eq('proposal_id', proposal.id)
     .maybeSingle();
 
-  if (existing?.raw?.signers?.[0]?.url) {
-    return { signUrl: existing.raw.signers[0].url, doc: existing };
+  if (existing?.raw?.signers?.[0]) {
+    const storedSigner = existing.raw.signers[0];
+    const storedToken = storedSigner?.signer_token || storedSigner?.token;
+    const storedUrl =
+      storedSigner?.sign_url ||
+      storedSigner?.url ||
+      (storedToken ? `https://app.zapsign.com.br/verificar/${storedToken}` : null) ||
+      null;
+    if (storedUrl) {
+      return { signUrl: storedUrl, doc: existing };
+    }
   }
+
+  const internalSigner =
+    ZAPSIGN_INTERNAL_SIGNER_NAME && ZAPSIGN_INTERNAL_SIGNER_EMAIL
+      ? {
+          name: ZAPSIGN_INTERNAL_SIGNER_NAME,
+          email: ZAPSIGN_INTERNAL_SIGNER_EMAIL,
+          cpf: ZAPSIGN_INTERNAL_SIGNER_CPF || undefined,
+          authMode: 'assinaturaTela' as const,
+          anchor: '<<signer2>>',
+          sendAutomaticEmail: false,
+          sendAutomaticWhatsapp: false,
+        }
+      : null;
 
   const fallbackHtml = `<h2>Contrato OneDoctor</h2><p>Cliente: {{razao_social}}</p><p>Produto: {{produto_nome}}</p>`;
   const html = await getContractHtml(proposal.contract_template_id || null, fallbackHtml);
@@ -112,6 +144,7 @@ const ensureSignature = async (proposal: any, payload: any) => {
         cpf: normalizeDoc(payload.responsible.cpf),
         anchor: '<<signer1>>',
       },
+      ...(internalSigner ? [internalSigner] : []),
     ],
     lang: 'pt-br',
     external_id: proposal.id,
@@ -126,6 +159,21 @@ const ensureSignature = async (proposal: any, payload: any) => {
     (signerToken ? `https://app.zapsign.com.br/verificar/${signerToken}` : null) ||
     document?.url ||
     null;
+
+  if (internalSigner && ZAPSIGN_INTERNAL_USER_TOKEN) {
+    const internalMatch = document?.signers?.find((item: any) => {
+      const email = (item?.email || '').toLowerCase();
+      return email && email === ZAPSIGN_INTERNAL_SIGNER_EMAIL.toLowerCase();
+    });
+    const internalToken = internalMatch?.signer_token || internalMatch?.token;
+    if (internalToken) {
+      try {
+        await signByUser(ZAPSIGN_API_TOKEN, ZAPSIGN_INTERNAL_USER_TOKEN, [internalToken]);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
 
   const { data: stored } = await supabaseAdmin
     .from('od_zapsign_documents')

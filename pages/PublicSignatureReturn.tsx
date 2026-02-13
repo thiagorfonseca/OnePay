@@ -26,11 +26,12 @@ const PublicSignatureReturn: React.FC = () => {
           return;
         }
         const data = await res.json().catch(() => ({}));
-        if (data?.signature?.status === 'signed') {
+        const status = data?.status || '';
+        if (status === 'signed' || status === 'paid' || status === 'payment_created') {
           navigate(`/pagamento/${token}`, { replace: true });
           return;
         }
-        setSignUrl(data?.signature?.signUrl || '');
+        setSignUrl(data?.signatureUrl || '');
         setMessage('Assinatura ainda não confirmada.');
       } catch {
         setMessage('Erro ao consultar assinatura.');

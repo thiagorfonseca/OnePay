@@ -6,6 +6,10 @@ export const APP_BASE_URL = getEnv('APP_BASE_URL');
 
 export const ZAPSIGN_API_TOKEN = getEnv('ZAPSIGN_API_TOKEN');
 export const ZAPSIGN_WEBHOOK_SECRET = getEnv('ZAPSIGN_WEBHOOK_SECRET');
+export const ZAPSIGN_INTERNAL_SIGNER_NAME = getEnv('ZAPSIGN_INTERNAL_SIGNER_NAME');
+export const ZAPSIGN_INTERNAL_SIGNER_EMAIL = getEnv('ZAPSIGN_INTERNAL_SIGNER_EMAIL');
+export const ZAPSIGN_INTERNAL_SIGNER_CPF = getEnv('ZAPSIGN_INTERNAL_SIGNER_CPF');
+export const ZAPSIGN_INTERNAL_USER_TOKEN = getEnv('ZAPSIGN_INTERNAL_USER_TOKEN');
 
 export const ASAAS_API_KEY = getEnv('ASAAS_API_KEY');
 export const ASAAS_ENV = (getEnv('ASAAS_ENV') || 'sandbox') as 'sandbox' | 'prod';

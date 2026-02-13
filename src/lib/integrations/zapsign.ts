@@ -2,9 +2,14 @@ export type ZapsignSigner = {
   name: string;
   email: string;
   cpf?: string;
-  authMode?: 'email' | 'sms' | 'whatsapp';
+  authMode?: 'email' | 'sms' | 'whatsapp' | 'assinaturaTela';
   phone?: string;
   anchor?: string;
+  sendAutomaticEmail?: boolean;
+  sendAutomaticWhatsapp?: boolean;
+  lockEmail?: boolean;
+  lockPhone?: boolean;
+  phoneCountry?: string;
 };
 
 export type ZapsignCreateDocumentParams = {
@@ -65,7 +70,12 @@ export const createDocumentFromBase64 = async (
       cpf: signer.cpf,
       auth_mode: signer.authMode || 'email',
       phone_number: signer.phone,
+      phone_country: signer.phoneCountry,
       anchor: signer.anchor || `<<signer${index + 1}>>`,
+      send_automatic_email: signer.sendAutomaticEmail,
+      send_automatic_whatsapp: signer.sendAutomaticWhatsapp,
+      lock_email: signer.lockEmail,
+      lock_phone: signer.lockPhone,
     })),
   };
 
@@ -86,4 +96,14 @@ export const getDocument = async (token: string, docId: string) => {
 
 export const downloadSigned = async (token: string, docId: string) => {
   return request(`/docs/${docId}/download`, token, { method: 'GET' });
+};
+
+export const signByUser = async (token: string, userToken: string, signerTokens: string[]) => {
+  return request('/sign/', token, {
+    method: 'POST',
+    body: JSON.stringify({
+      user_token: userToken,
+      signer_tokens: signerTokens,
+    }),
+  });
 };
