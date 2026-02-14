@@ -141,10 +141,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [userForm, setUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [editUserForm, setEditUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [bulkUserRole, setBulkUserRole] = useState('user');
+  const [userViewMode, setUserViewMode] = useState<'list' | 'boxes'>('list');
   const [savingClinic, setSavingClinic] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
   const [resendingAccessId, setResendingAccessId] = useState<string | null>(null);
@@ -357,6 +360,16 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setEditUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
   };
 
+  const closeInviteModal = () => {
+    setShowInviteModal(false);
+    setInviteForm({ clinic_id: '', email: '', role: 'user' });
+  };
+
+  const closeCreateUserModal = () => {
+    setShowCreateUserModal(false);
+    setUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+  };
+
   const clinicModalControls = useModalControls({
     isOpen: showClinicModal,
     onClose: closeClinicModal,
@@ -370,6 +383,16 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const userModalControls = useModalControls({
     isOpen: showUserModal,
     onClose: closeUserModal,
+  });
+
+  const inviteModalControls = useModalControls({
+    isOpen: showInviteModal,
+    onClose: closeInviteModal,
+  });
+
+  const createUserModalControls = useModalControls({
+    isOpen: showCreateUserModal,
+    onClose: closeCreateUserModal,
   });
 
   const handleClinicLogoChange = async (file: File) => {
@@ -430,6 +453,16 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const openCreateClinicModal = () => {
     resetClinicForm();
     setShowCreateClinicModal(true);
+  };
+
+  const openInviteModal = () => {
+    setInviteForm({ clinic_id: '', email: '', role: 'user' });
+    setShowInviteModal(true);
+  };
+
+  const openCreateUserModal = () => {
+    setUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+    setShowCreateUserModal(true);
   };
 
   const loadClinicContract = async (clinicId: string) => {
@@ -746,10 +779,72 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       const { data } = await supabase.from('clinic_users').select('*').order('created_at', { ascending: false });
       if (data) setClinicUsers(data as any[]);
       setUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+      setShowCreateUserModal(false);
     } catch (err: any) {
       alert('Erro ao salvar usuário: ' + err.message);
     } finally {
       setSavingUser(false);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!invitesEnabled) {
+      alert('Convites indisponíveis: tabela clinic_invites não encontrada no Supabase.');
+      return;
+    }
+    if (!inviteForm.email || !inviteForm.clinic_id) {
+      alert('Informe e-mail e clínica');
+      return;
+    }
+    const inviteEmail = inviteForm.email.trim().toLowerCase();
+    const { data: existingInviteUser } = await supabase
+      .from('clinic_users')
+      .select('id')
+      .eq('email', inviteEmail)
+      .maybeSingle();
+    if (existingInviteUser) {
+      alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
+      return;
+    }
+    setSendingInvite(true);
+    try {
+      const token = crypto.randomUUID();
+      const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { error, data } = await (supabase as any)
+        .from('clinic_invites')
+        .insert([{
+          clinic_id: inviteForm.clinic_id,
+          email: inviteEmail,
+          role: inviteForm.role,
+          token,
+          invited_by: currentUserId,
+          expires_at,
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      const redirectTo = callbackUrl
+        ? `${callbackUrl}?redirectTo=${encodeURIComponent(`/accept-invite?token=${data.token}`)}`
+        : undefined;
+      const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
+      if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
+      const { error: inviteEmailError } = await supabase.auth.signInWithOtp({
+        email: inviteEmail,
+        options: otpOptions,
+      });
+      if (inviteEmailError) {
+        alert(`Convite gerado, mas não foi possível enviar o email: ${inviteEmailError.message}. Link: /accept-invite?token=${data.token}`);
+      } else {
+        alert(`Convite enviado por email. Se necessário, use o link /accept-invite?token=${data.token}`);
+      }
+      const { data: inv } = await (supabase as any).from('clinic_invites').select('*').order('created_at', { ascending: false });
+      if (inv) setInvites(inv as any[]);
+      setInviteForm({ clinic_id: '', email: '', role: 'user' });
+      setShowInviteModal(false);
+    } catch (err: any) {
+      alert('Erro ao enviar convite: ' + err.message);
+    } finally {
+      setSendingInvite(false);
     }
   };
 
@@ -876,6 +971,16 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       return matchName && matchStatus;
     });
   }, [clinics, search, statusFilter]);
+
+  const filteredUsers = useMemo(() => {
+    const term = userSearch.trim().toLowerCase();
+    if (!term) return clinicUsers;
+    return clinicUsers.filter((u: any) => {
+      const name = (u.name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return name.includes(term) || email.includes(term);
+    });
+  }, [clinicUsers, userSearch]);
 
   return (
     <div className="space-y-6">
@@ -1785,237 +1890,76 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-md font-semibold text-gray-800 flex items-center gap-2"><CheckSquare size={16}/> Usuários da Clínica</h3>
-            <div className="flex gap-2">
-              <button onClick={() => supabase.from('clinic_users').update({ ativo: true }).in('id', selectedUsers).then(() => supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setClinicUsers(data as any[])))} className="px-3 py-2 text-sm bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100">Ativar</button>
-              <button onClick={() => supabase.from('clinic_users').update({ ativo: false }).in('id', selectedUsers).then(() => supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setClinicUsers(data as any[])))} className="px-3 py-2 text-sm bg-red-50 text-red-700 rounded-lg border border-red-100">Desativar</button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="md:col-span-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-                <div>
-                  <h4 className="font-semibold text-gray-800 text-sm">Convidar usuário</h4>
-                  <p className="text-xs text-gray-500">Gere um convite por e-mail (role: owner/admin/user)</p>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={inviteForm.email}
-                    onChange={e => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@dominio.com"
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                  <select
-                    value={inviteForm.clinic_id}
-                    onChange={e => setInviteForm(prev => ({ ...prev, clinic_id: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="">Clínica...</option>
-                    {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  <select
-                    value={inviteForm.role}
-                    onChange={e => setInviteForm(prev => ({ ...prev, role: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="owner">Owner</option>
-                    <option value="admin">Admin</option>
-                    <option value="user">Usuário</option>
-                  </select>
-                  <button
-                    type="button"
-                    disabled={sendingInvite || !invitesEnabled}
-                    onClick={async () => {
-                      if (!invitesEnabled) {
-                        alert('Convites indisponíveis: tabela clinic_invites não encontrada no Supabase.');
-                        return;
-                      }
-                      if (!inviteForm.email || !inviteForm.clinic_id) {
-                        alert('Informe e-mail e clínica');
-                        return;
-                      }
-                      const inviteEmail = inviteForm.email.trim().toLowerCase();
-                      const { data: existingInviteUser } = await supabase
-                        .from('clinic_users')
-                        .select('id')
-                        .eq('email', inviteEmail)
-                        .maybeSingle();
-                      if (existingInviteUser) {
-                        alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
-                        return;
-                      }
-                      setSendingInvite(true);
-                      try {
-                        const token = crypto.randomUUID();
-                        const expires_at = new Date(Date.now() + 7*24*60*60*1000).toISOString();
-                        const { error, data } = await (supabase as any)
-                          .from('clinic_invites')
-                          .insert([{
-                            clinic_id: inviteForm.clinic_id,
-                            email: inviteEmail,
-                            role: inviteForm.role,
-                            token,
-                            invited_by: currentUserId,
-                            expires_at
-                          }])
-                          .select()
-                          .single();
-                        if (error) throw error;
-                        const redirectTo = callbackUrl
-                          ? `${callbackUrl}?redirectTo=${encodeURIComponent(`/accept-invite?token=${data.token}`)}`
-                          : undefined;
-                        const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
-                        if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
-                        const { error: inviteEmailError } = await supabase.auth.signInWithOtp({
-                          email: inviteEmail,
-                          options: otpOptions,
-                        });
-                        if (inviteEmailError) {
-                          alert(`Convite gerado, mas não foi possível enviar o email: ${inviteEmailError.message}. Link: /accept-invite?token=${data.token}`);
-                        } else {
-                          alert(`Convite enviado por email. Se necessário, use o link /accept-invite?token=${data.token}`);
-                        }
-                        const { data: inv } = await (supabase as any).from('clinic_invites').select('*').order('created_at', { ascending: false });
-                        if (inv) setInvites(inv as any[]);
-                        setInviteForm({ clinic_id: '', email: '', role: 'user' });
-                      } catch (err: any) {
-                        alert('Erro ao enviar convite: ' + err.message);
-                      } finally {
-                        setSendingInvite(false);
-                      }
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm ${invitesEnabled ? 'bg-brand-600 text-white hover:bg-brand-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
-                  >
-                    {invitesEnabled ? (sendingInvite ? 'Enviando...' : 'Enviar convite') : 'Convites indisponíveis'}
-                  </button>
-                </div>
-              </div>
-              <div className="table-scroll">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-white text-gray-500 border border-gray-200">
-                    <tr>
-                      <th className="px-3 py-2">E-mail</th>
-                      <th className="px-3 py-2">Clínica</th>
-                      <th className="px-3 py-2">Role</th>
-                      <th className="px-3 py-2">Expira</th>
-                      <th className="px-3 py-2">Token</th>
-                      <th className="px-3 py-2 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {invitesEnabled ? (
-                      invites.map((i) => (
-                        <tr key={i.id}>
-                          <td className="px-3 py-2 text-gray-800">{i.email}</td>
-                          <td className="px-3 py-2 text-gray-600">{i.clinic_id}</td>
-                          <td className="px-3 py-2 text-gray-600 capitalize">{i.role}</td>
-                          <td className="px-3 py-2 text-gray-600">{formatDate(i.expires_at)}</td>
-                          <td className="px-3 py-2 text-xs text-gray-500 break-all">{i.token}</td>
-                          <td className="px-3 py-2 text-right">
-                            <button
-                              onClick={async () => {
-                                if (!confirm('Revogar convite?')) return;
-                                const { error } = await (supabase as any).from('clinic_invites').delete().eq('id', i.id);
-                                if (error) { alert(error.message); return; }
-                                setInvites(prev => prev.filter(p => p.id !== i.id));
-                              }}
-                              className="text-sm text-red-600 hover:underline"
-                            >
-                              Revogar
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr><td colSpan={6} className="px-3 py-3 text-center text-gray-400">Convites indisponíveis (tabela clinic_invites ausente).</td></tr>
-                    )}
-                    {invitesEnabled && invites.length === 0 && (
-                      <tr><td colSpan={6} className="px-3 py-3 text-center text-gray-400">Nenhum convite pendente.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Clínica</label>
-              <select
-                value={userForm.clinic_id}
-                onChange={e => setUserForm({ ...userForm, clinic_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
-              >
-                <option value="">Selecione...</option>
-                {clinics.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-              <input
-                value={userForm.name}
-                onChange={e => setUserForm({ ...userForm, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                placeholder="Nome do usuário"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-              <input
-                type="email"
-                value={userForm.email}
-                onChange={e => setUserForm({ ...userForm, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                placeholder="email@dominio.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Papel/Acesso</label>
-              <select
-                value={userForm.role}
-                onChange={e => setUserForm({ ...userForm, role: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
-              >
-                <option value="owner">Owner</option>
-                <option value="admin">Admin</option>
-                <option value="user">Usuário</option>
-              </select>
-            </div>
-            <div className="flex items-end gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={userForm.ativo} onChange={e => setUserForm(prev => ({ ...prev, ativo: e.target.checked }))} className="h-4 w-4 text-brand-600 border-gray-300 rounded" />
-                Ativo
-              </label>
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={handleCreateUser}
-                className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2 justify-center"
+                onClick={openInviteModal}
+                className="px-3 py-2 text-sm bg-brand-600 text-white rounded-lg border border-brand-600 hover:bg-brand-700"
               >
-                {savingUser ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                Adicionar
+                Convidar usuário
+              </button>
+              <button
+                type="button"
+                onClick={openCreateUserModal}
+                className="px-3 py-2 text-sm bg-white text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-50"
+              >
+                Novo usuário
+              </button>
+              <button
+                onClick={() => supabase.from('clinic_users').update({ ativo: true }).in('id', selectedUsers).then(() => supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setClinicUsers(data as any[])))}
+                className="px-3 py-2 text-sm bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100"
+              >
+                Ativar
+              </button>
+              <button
+                onClick={() => supabase.from('clinic_users').update({ ativo: false }).in('id', selectedUsers).then(() => supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setClinicUsers(data as any[])))}
+                className="px-3 py-2 text-sm bg-red-50 text-red-700 rounded-lg border border-red-100"
+              >
+                Desativar
               </button>
             </div>
           </div>
 
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={userSearch}
-              onChange={e => setUserSearch(e.target.value)}
-              placeholder="Buscar usuário por nome..."
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 flex-1"
-            />
-            <button
-              onClick={() => {
-                supabase.from('clinic_users').update({
-                  role: bulkUserRole,
-                }).in('id', selectedUsers).then(() => supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setClinicUsers(data as any[])));
-              }}
-              className="px-3 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700"
-            >
-              Aplicar papel
-            </button>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                placeholder="Buscar usuário por nome..."
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 flex-1"
+              />
+              <button
+                onClick={() => {
+                  supabase.from('clinic_users').update({
+                    role: bulkUserRole,
+                  }).in('id', selectedUsers).then(() => supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setClinicUsers(data as any[])));
+                }}
+                className="px-3 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700"
+              >
+                Aplicar papel
+              </button>
+            </div>
+            <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setUserViewMode('list')}
+                className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${userViewMode === 'list' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                aria-pressed={userViewMode === 'list'}
+              >
+                <List size={14} /> Lista
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserViewMode('boxes')}
+                className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${userViewMode === 'boxes' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                aria-pressed={userViewMode === 'boxes'}
+              >
+                <LayoutGrid size={14} /> Boxes
+              </button>
+            </div>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Aplicar papel aos selecionados</label>
@@ -2031,10 +1975,63 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             </div>
           </div>
 
-          <div className="border border-gray-100 rounded-lg divide-y">
-            {clinicUsers
-              .filter((u: any) => u.name?.toLowerCase().includes(userSearch.toLowerCase()))
-              .map(u => {
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="font-semibold text-gray-800 text-sm">Convites pendentes</h4>
+                <p className="text-xs text-gray-500">Convites enviados que ainda não foram aceitos</p>
+              </div>
+            </div>
+            <div className="table-scroll">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-white text-gray-500 border border-gray-200">
+                  <tr>
+                    <th className="px-3 py-2">E-mail</th>
+                    <th className="px-3 py-2">Clínica</th>
+                    <th className="px-3 py-2">Role</th>
+                    <th className="px-3 py-2">Expira</th>
+                    <th className="px-3 py-2">Token</th>
+                    <th className="px-3 py-2 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {invitesEnabled ? (
+                    invites.map((i) => (
+                      <tr key={i.id}>
+                        <td className="px-3 py-2 text-gray-800">{i.email}</td>
+                        <td className="px-3 py-2 text-gray-600">{i.clinic_id}</td>
+                        <td className="px-3 py-2 text-gray-600 capitalize">{i.role}</td>
+                        <td className="px-3 py-2 text-gray-600">{formatDate(i.expires_at)}</td>
+                        <td className="px-3 py-2 text-xs text-gray-500 break-all">{i.token}</td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Revogar convite?')) return;
+                              const { error } = await (supabase as any).from('clinic_invites').delete().eq('id', i.id);
+                              if (error) { alert(error.message); return; }
+                              setInvites(prev => prev.filter(p => p.id !== i.id));
+                            }}
+                            className="text-sm text-red-600 hover:underline"
+                          >
+                            Revogar
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={6} className="px-3 py-3 text-center text-gray-400">Convites indisponíveis (tabela clinic_invites ausente).</td></tr>
+                  )}
+                  {invitesEnabled && invites.length === 0 && (
+                    <tr><td colSpan={6} className="px-3 py-3 text-center text-gray-400">Nenhum convite pendente.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {userViewMode === 'list' ? (
+            <div className="border border-gray-100 rounded-lg divide-y">
+              {filteredUsers.map(u => {
                 const selected = selectedUsers.includes(u.id);
                 return (
                   <div key={u.id} className="p-3 flex items-center justify-between">
@@ -2072,10 +2069,236 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                   </div>
                 );
               })}
-            {clinicUsers.length === 0 && (
-              <div className="p-4 text-sm text-gray-400 text-center">Nenhum usuário cadastrado.</div>
-            )}
-          </div>
+              {filteredUsers.length === 0 && (
+                <div className="p-4 text-sm text-gray-400 text-center">Nenhum usuário cadastrado.</div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredUsers.map(u => {
+                const selected = selectedUsers.includes(u.id);
+                return (
+                  <div key={u.id} className="border border-gray-100 rounded-lg p-4 bg-white flex flex-col gap-3 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedUsers(prev => [...prev, u.id]);
+                          else setSelectedUsers(prev => prev.filter(id => id !== u.id));
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{u.name || u.email}</p>
+                        <p className="text-xs text-gray-500 break-all">{u.email}</p>
+                        <p className="text-xs text-gray-500">Clínica: {u.clinic_id}</p>
+                        <p className="text-xs text-gray-500 capitalize">Papel: {u.role || 'user'}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className={`px-2 py-1 rounded-full ${u.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {u.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <button
+                        onClick={() => openEditUserModal(u)}
+                        className="text-sm text-brand-600"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        className="text-sm text-red-600"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredUsers.length === 0 && (
+                <div className="col-span-full p-4 text-sm text-gray-400 text-center">Nenhum usuário cadastrado.</div>
+              )}
+            </div>
+          )}
+
+          {showInviteModal && (
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+              onClick={inviteModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-2xl space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-gray-800">Convidar usuário</h4>
+                  <button
+                    type="button"
+                    onClick={closeInviteModal}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input
+                      type="email"
+                      value={inviteForm.email}
+                      onChange={e => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="email@dominio.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Clínica</label>
+                    <select
+                      value={inviteForm.clinic_id}
+                      onChange={e => setInviteForm(prev => ({ ...prev, clinic_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      <option value="">Selecione...</option>
+                      {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Papel</label>
+                    <select
+                      value={inviteForm.role}
+                      onChange={e => setInviteForm(prev => ({ ...prev, role: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      <option value="owner">Owner</option>
+                      <option value="admin">Admin</option>
+                      <option value="user">Usuário</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeInviteModal}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={sendingInvite || !invitesEnabled}
+                    onClick={handleSendInvite}
+                    className={`px-4 py-2 rounded-lg text-sm ${invitesEnabled ? 'bg-brand-600 text-white hover:bg-brand-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                  >
+                    {invitesEnabled ? (sendingInvite ? 'Enviando...' : 'Enviar convite') : 'Convites indisponíveis'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showCreateUserModal && (
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+              onClick={createUserModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-2xl space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-gray-800">Novo usuário</h4>
+                  <button
+                    type="button"
+                    onClick={closeCreateUserModal}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleCreateUser();
+                  }}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                >
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Clínica</label>
+                    <select
+                      value={userForm.clinic_id}
+                      onChange={e => setUserForm({ ...userForm, clinic_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                    >
+                      <option value="">Selecione...</option>
+                      {clinics.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                    <input
+                      value={userForm.name}
+                      onChange={e => setUserForm({ ...userForm, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                      placeholder="Nome do usuário"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input
+                      type="email"
+                      value={userForm.email}
+                      onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                      placeholder="email@dominio.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Papel/Acesso</label>
+                    <select
+                      value={userForm.role}
+                      onChange={e => setUserForm({ ...userForm, role: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                    >
+                      <option value="owner">Owner</option>
+                      <option value="admin">Admin</option>
+                      <option value="user">Usuário</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="create-user-active"
+                      type="checkbox"
+                      checked={userForm.ativo}
+                      onChange={e => setUserForm(prev => ({ ...prev, ativo: e.target.checked }))}
+                      className="h-4 w-4 text-brand-600 border-gray-300 rounded"
+                    />
+                    <label htmlFor="create-user-active" className="text-sm text-gray-700">Ativo</label>
+                  </div>
+                  <div className="md:col-span-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeCreateUserModal}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingUser}
+                      className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {savingUser ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                      Cadastrar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {showUserModal && (
             <div
