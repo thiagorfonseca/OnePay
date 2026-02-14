@@ -107,6 +107,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [clinicPackageMap, setClinicPackageMap] = useState<Record<string, string[]>>({});
   const [editingClinicId, setEditingClinicId] = useState<string | null>(null);
   const [showClinicModal, setShowClinicModal] = useState(false);
+  const [showCreateClinicModal, setShowCreateClinicModal] = useState(false);
   const [editClinicForm, setEditClinicForm] = useState({
     name: '',
     responsavel_nome: '',
@@ -345,6 +346,11 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     resetEditClinicForm();
   };
 
+  const closeCreateClinicModal = () => {
+    setShowCreateClinicModal(false);
+    resetClinicForm();
+  };
+
   const closeUserModal = () => {
     setShowUserModal(false);
     setEditingUserId(null);
@@ -354,6 +360,11 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const clinicModalControls = useModalControls({
     isOpen: showClinicModal,
     onClose: closeClinicModal,
+  });
+
+  const createClinicModalControls = useModalControls({
+    isOpen: showCreateClinicModal,
+    onClose: closeCreateClinicModal,
   });
 
   const userModalControls = useModalControls({
@@ -414,6 +425,11 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setEditContractProductInput('');
     loadClinicContract(clinic.id);
     setShowClinicModal(true);
+  };
+
+  const openCreateClinicModal = () => {
+    resetClinicForm();
+    setShowCreateClinicModal(true);
   };
 
   const loadClinicContract = async (clinicId: string) => {
@@ -564,6 +580,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         await persistClinicContract(createdClinic.id, clinicForm);
       }
       resetClinicForm();
+      setShowCreateClinicModal(false);
       fetchClinics();
     } catch (err: any) {
       alert('Erro ao salvar clínica: ' + err.message);
@@ -1012,6 +1029,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             </div>
             <div className="flex gap-2">
               <button
+                type="button"
+                onClick={openCreateClinicModal}
+                className="px-3 py-2 text-sm bg-brand-600 text-white rounded-lg border border-brand-600 hover:bg-brand-700"
+              >
+                + Nova Clínica
+              </button>
+              <button
                 onClick={() => handleToggleClinics(selectedClinics, true)}
                 className="px-3 py-2 text-sm bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100"
               >
@@ -1025,235 +1049,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
               </button>
             </div>
           </div>
-
-          <form onSubmit={handleCreateClinic} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Clínica</label>
-              <input
-                value={clinicForm.name}
-                onChange={e => setClinicForm(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Imagem da clínica</label>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="h-[150px] w-[150px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
-                  {clinicLogoPreview || clinicForm.logo_url ? (
-                    <img
-                      src={clinicLogoPreview || clinicForm.logo_url || ''}
-                      alt="Imagem da clínica"
-                      className="h-full w-full object-cover object-center"
-                    />
-                  ) : (
-                    <span>{getClinicInitials(clinicForm.name || '')}</span>
-                  )}
-                </div>
-                <label className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                  {clinicLogoPreview || clinicForm.logo_url ? 'Trocar imagem' : 'Adicionar imagem'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) await handleClinicLogoChange(file);
-                      e.currentTarget.value = '';
-                    }}
-                  />
-                </label>
-                <span className="text-xs text-gray-500">Quadrada até 350 x 350.</span>
-              </div>
-              {clinicLogoError && <p className="text-xs text-red-600 mt-1">{clinicLogoError}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
-              <input
-                value={clinicForm.responsavel_nome}
-                onChange={e => setClinicForm(prev => ({ ...prev, responsavel_nome: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ/CPF</label>
-              <input
-                value={clinicForm.documento}
-                onChange={e => setClinicForm(prev => ({ ...prev, documento: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-              <input
-                value={clinicForm.email_contato}
-                onChange={e => setClinicForm(prev => ({ ...prev, email_contato: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-              <input
-                value={clinicForm.telefone_contato}
-                onChange={e => setClinicForm(prev => ({ ...prev, telefone_contato: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pacote</label>
-              <select
-                value={clinicForm.package_id}
-                onChange={e => setClinicForm(prev => ({ ...prev, package_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
-              >
-                <option value="">Selecione...</option>
-                {packages.map(pkg => (
-                  <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
-                ))}
-              </select>
-            </div>
-            <div className="md:col-span-3 border-t border-gray-100 pt-4">
-              <div className="flex flex-col gap-1 mb-3">
-                <h3 className="text-sm font-semibold text-gray-800">Contrato Comercial</h3>
-                <p className="text-xs text-gray-500">Preencha os dados comerciais que alimentam o Relatório Gerencial.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Produto comprado</label>
-                  <div className="flex flex-wrap gap-2">
-                    <input
-                      value={contractProductInput}
-                      onChange={(e) => setContractProductInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Enter') return;
-                        e.preventDefault();
-                        addCommercialProduct(contractProductInput, 'create');
-                      }}
-                      list="commercial-products-create"
-                      placeholder="Digite e pressione Enter"
-                      className="flex-1 min-w-[220px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => addCommercialProduct(contractProductInput, 'create')}
-                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
-                    >
-                      Adicionar
-                    </button>
-                  </div>
-                  <datalist id="commercial-products-create">
-                    {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
-                      <option key={option} value={option} />
-                    ))}
-                  </datalist>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {clinicForm.commercial_products.map((product) => (
-                      <button
-                        key={product}
-                        type="button"
-                        onClick={() => removeCommercialProduct(product, 'create')}
-                        className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
-                      >
-                        {product} ✕
-                      </button>
-                    ))}
-                    {!clinicForm.commercial_products.length && (
-                      <span className="text-xs text-gray-400">Nenhum produto selecionado.</span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => addCommercialProduct(option, 'create')}
-                        className="px-2 py-1 text-xs border border-gray-200 rounded-full text-gray-600 hover:border-gray-300"
-                      >
-                        + {option}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pacote comprado</label>
-                  <select
-                    value={clinicForm.commercial_package_id}
-                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_package_id: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
-                  >
-                    <option value="">Selecione...</option>
-                    {packages.map(pkg => (
-                      <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-                  <input
-                    value={clinicForm.commercial_amount}
-                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_amount: e.target.value }))}
-                    placeholder="0,00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Início do contrato</label>
-                  <input
-                    type="date"
-                    value={clinicForm.commercial_start_date}
-                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_start_date: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Término do contrato</label>
-                  <input
-                    type="date"
-                    value={clinicForm.commercial_end_date}
-                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_end_date: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status do contrato</label>
-                  <select
-                    value={clinicForm.commercial_status}
-                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_status: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
-                  >
-                    <option value="ativo">Ativo</option>
-                    <option value="vencendo">Vencendo</option>
-                    <option value="encerrado">Encerrado</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Responsável interno</label>
-                  <select
-                    value={clinicForm.commercial_owner_user_id}
-                    onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_owner_user_id: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
-                  >
-                    <option value="">Selecione...</option>
-                    {internalUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.full_name || user.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-end gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={clinicForm.ativo} onChange={e => setClinicForm(prev => ({ ...prev, ativo: e.target.checked }))} className="h-4 w-4 text-brand-600 border-gray-300 rounded" />
-                Ativa
-              </label>
-              <button type="submit" disabled={savingClinic} className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2 justify-center">
-                {savingClinic ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                Salvar
-              </button>
-            </div>
-          </form>
 
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div className="flex flex-wrap gap-2 items-center">
@@ -1718,6 +1513,266 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                       {savingClinic ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                       Salvar alterações
                     </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {showCreateClinicModal && (
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+              onClick={createClinicModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-auto space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-gray-800">Nova clínica</h4>
+                  <button
+                    type="button"
+                    onClick={closeCreateClinicModal}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form onSubmit={handleCreateClinic} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Clínica</label>
+                    <input
+                      value={clinicForm.name}
+                      onChange={e => setClinicForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Imagem da clínica</label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="h-[150px] w-[150px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                        {clinicLogoPreview || clinicForm.logo_url ? (
+                          <img
+                            src={clinicLogoPreview || clinicForm.logo_url || ''}
+                            alt="Imagem da clínica"
+                            className="h-full w-full object-cover object-center"
+                          />
+                        ) : (
+                          <span>{getClinicInitials(clinicForm.name || '')}</span>
+                        )}
+                      </div>
+                      <label className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                        {clinicLogoPreview || clinicForm.logo_url ? 'Trocar imagem' : 'Adicionar imagem'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) await handleClinicLogoChange(file);
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                      </label>
+                      <span className="text-xs text-gray-500">Quadrada até 350 x 350.</span>
+                    </div>
+                    {clinicLogoError && <p className="text-xs text-red-600 mt-1">{clinicLogoError}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                    <input
+                      value={clinicForm.responsavel_nome}
+                      onChange={e => setClinicForm(prev => ({ ...prev, responsavel_nome: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ/CPF</label>
+                    <input
+                      value={clinicForm.documento}
+                      onChange={e => setClinicForm(prev => ({ ...prev, documento: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input
+                      value={clinicForm.email_contato}
+                      onChange={e => setClinicForm(prev => ({ ...prev, email_contato: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                    <input
+                      value={clinicForm.telefone_contato}
+                      onChange={e => setClinicForm(prev => ({ ...prev, telefone_contato: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pacote</label>
+                    <select
+                      value={clinicForm.package_id}
+                      onChange={e => setClinicForm(prev => ({ ...prev, package_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                    >
+                      <option value="">Selecione...</option>
+                      {packages.map(pkg => (
+                        <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-3 border-t border-gray-100 pt-4">
+                    <div className="flex flex-col gap-1 mb-3">
+                      <h3 className="text-sm font-semibold text-gray-800">Contrato Comercial</h3>
+                      <p className="text-xs text-gray-500">Preencha os dados comerciais que alimentam o Relatório Gerencial.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Produto comprado</label>
+                        <div className="flex flex-wrap gap-2">
+                          <input
+                            value={contractProductInput}
+                            onChange={(e) => setContractProductInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key !== 'Enter') return;
+                              e.preventDefault();
+                              addCommercialProduct(contractProductInput, 'create');
+                            }}
+                            list="commercial-products-create"
+                            placeholder="Digite e pressione Enter"
+                            className="flex-1 min-w-[220px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addCommercialProduct(contractProductInput, 'create')}
+                            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+                          >
+                            Adicionar
+                          </button>
+                        </div>
+                        <datalist id="commercial-products-create">
+                          {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
+                            <option key={option} value={option} />
+                          ))}
+                        </datalist>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {clinicForm.commercial_products.map((product) => (
+                            <button
+                              key={product}
+                              type="button"
+                              onClick={() => removeCommercialProduct(product, 'create')}
+                              className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                            >
+                              {product} ✕
+                            </button>
+                          ))}
+                          {!clinicForm.commercial_products.length && (
+                            <span className="text-xs text-gray-400">Nenhum produto selecionado.</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {COMMERCIAL_PRODUCT_OPTIONS.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => addCommercialProduct(option, 'create')}
+                              className="px-2 py-1 text-xs border border-gray-200 rounded-full text-gray-600 hover:border-gray-300"
+                            >
+                              + {option}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pacote comprado</label>
+                        <select
+                          value={clinicForm.commercial_package_id}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_package_id: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                        >
+                          <option value="">Selecione...</option>
+                          {packages.map(pkg => (
+                            <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                        <input
+                          value={clinicForm.commercial_amount}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_amount: e.target.value }))}
+                          placeholder="0,00"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Início do contrato</label>
+                        <input
+                          type="date"
+                          value={clinicForm.commercial_start_date}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_start_date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Término do contrato</label>
+                        <input
+                          type="date"
+                          value={clinicForm.commercial_end_date}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_end_date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Status do contrato</label>
+                        <select
+                          value={clinicForm.commercial_status}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_status: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                        >
+                          <option value="ativo">Ativo</option>
+                          <option value="vencendo">Vencendo</option>
+                          <option value="encerrado">Encerrado</option>
+                          <option value="cancelado">Cancelado</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Responsável interno</label>
+                        <select
+                          value={clinicForm.commercial_owner_user_id}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_owner_user_id: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                        >
+                          <option value="">Selecione...</option>
+                          {internalUsers.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.full_name || user.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between gap-3 md:col-span-3">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={clinicForm.ativo} onChange={e => setClinicForm(prev => ({ ...prev, ativo: e.target.checked }))} className="h-4 w-4 text-brand-600 border-gray-300 rounded" />
+                      Ativa
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={closeCreateClinicModal}
+                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                      >
+                        Cancelar
+                      </button>
+                      <button type="submit" disabled={savingClinic} className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2 justify-center">
+                        {savingClinic ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                        Salvar
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
