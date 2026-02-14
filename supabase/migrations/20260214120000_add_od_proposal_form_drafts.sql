@@ -20,5 +20,5 @@ drop policy if exists "od_proposal_form_drafts_internal" on public.od_proposal_f
 create policy "od_proposal_form_drafts_internal"
   on public.od_proposal_form_drafts
   for all
-  using (public.is_one_doctor_internal(auth.uid()))
-  with check (public.is_one_doctor_internal(auth.uid()));
+  using (public.is_one_doctor_internal())
+  with check (public.is_one_doctor_internal());
